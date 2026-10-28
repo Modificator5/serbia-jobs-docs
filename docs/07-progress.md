@@ -30,6 +30,8 @@
 - Просмотрщик базы: `npm run viewer` → http://localhost:7788 (список вакансий с фильтрами по городу/категории/поиску).
 - CLAUDE.md в корне — авто-входная точка для Claude.
 - Публичное зеркало `Modificator5/serbia-jobs-docs` для внешних ИИ (авто-синхронизация при push).
+- `prompts/START.md` — единая raw-точка входа для Claude (обход бага коннектора).
+- Исследование KupujemProdajem от Claude → `docs/sources/kupujemprodajem.md` (группы, пагинация, риски).
 
 В работе: нет.
 
