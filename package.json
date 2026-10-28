@@ -5,6 +5,7 @@
   "description": "Агрегатор вакансий Сербии + словарь сербских слов для русскоязычных",
   "scripts": {
     "scrape": "node scrapers/infostud.js",
-    "scrape:infostud": "node scrapers/infostud.js"
+    "scrape:infostud": "node scrapers/infostud.js",
+    "viewer": "node viewer/server.js"
   }
 }

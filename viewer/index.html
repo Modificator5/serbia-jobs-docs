@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вакансии Сербии — просмотр базы</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b36; --txt:#e6e8ee; --muted:#8b93a7; --acc:#4f8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.45 system-ui,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
+  h1 { font-size:18px; margin:0; }
+  .count { color:var(--muted); }
+  .bar { padding:12px 22px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:1; }
+  input, select { background:var(--card); border:1px solid var(--line); color:var(--txt); padding:8px 10px; border-radius:8px; font:inherit; }
+  input { flex:1; min-width:220px; }
+  main { padding:14px 22px 60px; }
+  .job { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .job h3 { margin:0 0 4px; font-size:15px; }
+  .job h3 a { color:var(--txt); text-decoration:none; }
+  .job h3 a:hover { color:var(--acc); }
+  .meta { color:var(--muted); font-size:13px; display:flex; gap:12px; flex-wrap:wrap; }
+  .tag { display:inline-block; background:#232936; color:#9db4e8; border-radius:20px; padding:1px 9px; font-size:12px; margin-left:6px; }
+  .req { margin-top:6px; font-size:13px; color:#b9c0d0; }
+  .salary { color:#7ee0a3; }
+  .empty { color:var(--muted); padding:40px; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Вакансии Сербии</h1>
+  <span class="count" id="count">загрузка...</span>
+</header>
+<div class="bar">
+  <input id="q" placeholder="Поиск: должность, компания...">
+  <select id="city"><option value="">Все города</option></select>
+  <select id="cat"><option value="">Все категории</option></select>
+</div>
+<main id="list"></main>
+<script>
+let DATA = [];
+
+const $ = (id) => document.getElementById(id);
+
+function fillSelect(el, values) {
+  values.sort().forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    el.appendChild(o);
+  });
+}
+
+function render() {
+  const q = $('q').value.toLowerCase();
+  const city = $('city').value;
+  const cat = $('cat').value;
+  const jobs = DATA.jobs.filter(j =>
+    (!city || j.city === city) &&
+    (!cat || j.category_tag === cat) &&
+    (!q || (j.title_sr + ' ' + (j.title_ru||'') + ' ' + (j.company_short||'') + ' ' + (j.city||'')).toLowerCase().includes(q))
+  );
+  $('count').textContent = jobs.length + ' из ' + DATA.jobs.length;
+  $('list').innerHTML = jobs.map(j => `
+    <div class="job">
+      <h3><a href="${j.source_url}" target="_blank" rel="noopener">${j.title_sr || '(без названия)'}${j.title_ru ? ' — ' + j.title_ru : ''}</a><span class="tag">${j.category_tag}</span></h3>
+      <div class="meta">
+        <span>📍 ${j.city || '—'}</span>
+        ${j.salary_raw ? `<span class="salary">💰 ${j.salary_raw.trim()}</span>` : ''}
+        <span>🏢 ${j.company_short || '—'}</span>
+        <span>📅 ${j.posted_at || '—'}</span>
+        <span>${j.source}</span>
+      </div>
+      ${j.requirements_short ? `<div class="req">${j.requirements_short}</div>` : ''}
+    </div>`).join('') || '<div class="empty">Ничего не найдено</div>';
+}
+
+fetch('/api/jobs').then(r => r.json()).then(d => {
+  DATA = d;
+  fillSelect($('city'), [...new Set(d.jobs.map(j => j.city).filter(Boolean))]);
+  fillSelect($('cat'), [...new Set(d.jobs.map(j => j.category_tag).filter(Boolean))]);
+  render();
+}).catch(e => { $('list').innerHTML = '<div class="empty">Ошибка: ' + e.message + '</div>'; });
+
+['q','city','cat'].forEach(id => $(id).addEventListener('input', render));
+</script>
+</body>
+</html>
