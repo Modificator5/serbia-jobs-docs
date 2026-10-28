@@ -7,6 +7,8 @@
     "scrape": "node scrapers/infostud.js",
     "scrape:infostud": "node scrapers/infostud.js",
     "scrape:kp": "node scrapers/kupujemprodajem.js",
+    "scrape:ho": "node scrapers/halooglasi.js",
+    "translate": "node tools/translate-titles.js",
     "import:glossary": "node tools/import-glossary.js",
     "export:snapshot": "node tools/export-csv.js",
     "viewer": "node viewer/server.js"

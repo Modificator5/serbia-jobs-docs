@@ -8,13 +8,13 @@
 |---|---|---|---|
 | Poslovi Infostud | poslovi.infostud.com | Главная площадка, ~10 000 вакансий, есть зарплаты | active |
 | KupujemProdajem — Poslovi | kupujemprodajem.com/poslovi | Классифайды, физработа, мастера, доставка, HoReCa; исследование: [sources/kupujemprodajem.md](sources/kupujemprodajem.md) | active |
-| Jooble Serbia | rs.jooble.org | Агрегатор; проблема: Cloudflare-челлендж | idea |
+| Jooble Serbia | rs.jooble.org | Агрегатор; проверено 2026-10-28: Cloudflare challenge (HTTP 403 «Just a moment») — без обхода антибота (ToS-риск) парсинг невозможен; возвращаемся, если появится открытый доступ или API | idea |
 
 ## Следующие
 
 | Площадка | URL | Заметки | Статус |
 |---|---|---|---|
-| HaloOglasi — Poslovi | halooglasi.com/poslovi | Классифайд-конкурент KP; назван обеими сетями в бэктесте (09-audit) — парсим следующим | research |
+| HaloOglasi — Posao | halooglasi.com/posao | Классифайд; парсер готов (`scrapers/halooglasi.js`, +106 ads); в листинге нет дат/сниппетов; node-fetch → 403, грузим через curl | active |
 | NSZ (гос. служба занятости) | nsz.gov.rs | База вакансий, много неофициальных | research |
 | Poslovi.rs | poslovi.rs | Категории, есть офферы; подтверждён бэктестом | research |
 | MojOglas | mojoglas.rs | Классифайды | research |

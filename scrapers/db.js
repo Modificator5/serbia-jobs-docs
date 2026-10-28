@@ -4,7 +4,7 @@ const path = require("path");
 const DB_PATH = process.env.JOBS_DB || path.join(__dirname, "..", "data", "jobs.db");
 
 const CATEGORY_MAP = [
-  ["ugostiteljstvo", "ugostiteljstvo"],
+  ["ugostiteljstv", "ugostiteljstvo"],
   ["kuvar", "ugostiteljstvo"],
   ["kuhar", "ugostiteljstvo"],
   ["konobar", "ugostiteljstvo"],
