@@ -1,14 +1,16 @@
 # Как подключить внешние ИИ к этому репозиторию
 
-## Главное: публичное зеркало (рабочий путь)
+## Главное: START.md — одна ссылка для старта
 
-Приватный репозиторий `Modificator5/serbia-jobs` — основное хранилище. Для внешних ИИ есть публичное read-only зеркало **`Modificator5/serbia-jobs-docs`** (только код/документы/промпты, без data/ и секретов). Оно синхронизируется автоматически: любой `git push` уходит в оба репозитория одной командой.
+Единая точка входа: `https://raw.githubusercontent.com/Modificator5/serbia-jobs-docs/main/prompts/START.md`
 
-Что читать ИИ (публичные raw-ссылки, работают у всех без авторизации):
+Файл самодостаточен (проект, роль, формат ответа, статус, протокол). Вставляй в чат Claude одну строку:
 
-- https://raw.githubusercontent.com/Modificator5/serbia-jobs-docs/main/CLAUDE.md
-- https://raw.githubusercontent.com/Modificator5/serbia-jobs-docs/main/docs/07-progress.md
-- https://raw.githubusercontent.com/Modificator5/serbia-jobs-docs/main/prompts/BRIEF.md
+> Прочитай https://raw.githubusercontent.com/Modificator5/serbia-jobs-docs/main/prompts/START.md и выполни инструкции.
+
+Статус в START.md обновляет OpenCode при каждой задаче — ссылка не меняется, содержимое свежее.
+
+Почему так: коннектор «+ → Add from GitHub» вставляет только ссылку и не даёт чату инструмент чтения (баг Anthropic: issues #96351, #97723, #68517); github.com блокирует веб-доступ Claude (robots); raw.githubusercontent.com — единственный домен, который читается исправно.
 
 ## Известный баг claude.ai (важно)
 
