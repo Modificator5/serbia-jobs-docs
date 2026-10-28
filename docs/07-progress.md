@@ -1,0 +1,32 @@
+# Прогресс
+
+Хронология: что сделано, что в работе, что дальше. Обновлять после каждого сеанса.
+
+## 2026-10-28 — Фаза 0: каркас
+
+Сделано:
+- Создан репозиторий со структурой (docs, prompts, scrapers, bot, api, data).
+- Написаны документы: vision, mvp, architecture, схемы jobs.db и glossary.db, sources, decisions.
+- Созданы промпты-роли для внешних ИИ (BRIEF, research, normalize, translate).
+- Перенесён промпт ru-sr-translator.md.
+- Согласован формат карточки вакансии для Telegram.
+- Стартовые площадки: Infostud, KupujemProdajem, Jooble.
+
+## 2026-10-28 — Фаза 1: первый парсер
+
+Сделано:
+- Репозиторий, документы, промпты-роли, батчи в канбане (Фазы 0–3).
+- Infostud разобран: данные в `__NEXT_DATA__`, robots.txt ок — см. `docs/sources/infostud.md`.
+- Парсер `scrapers/infostud.js` + общая БД `scrapers/db.js` (node:sqlite, без зависимостей).
+- Первый прогон: 60 вакансий в `data/jobs.db` (должность, город, зарплата, категория, компания).
+- Докатегоризированы складские (magacin → prevoz) и HR/финансовые вакансии.
+
+В работе: нет.
+
+Дальше:
+- [ ] Парсер KupujemProdajem /poslovi → jobs.db
+- [ ] Парсер Jooble Serbia → jobs.db
+- [ ] Заполнить professions базовыми переводами должностей (Ollama)
+- [ ] title_ru для спарсенных вакансий
+- [ ] Извлечение слов из вакансий → glossary.db
+- [ ] Telegram-канал: публикация карточек
