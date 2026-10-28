@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Парсер poslovi.infostud.com — берёт данные из __NEXT_DATA__ в листинге.
-// Запуск: node scrapers/infostud.js [страниц=3]
+// Запуск: node scrapers/infostud.js [страниц=2]
+// Режим выживания: по умолчанию 2 свежие страницы; полный: укажи больше.
 
 const { openDb, upsertJob, categoryTag, parseDateDMY, DB_PATH } = require("./db");
 
 const BASE = "https://poslovi.infostud.com";
 const LISTING = `${BASE}/oglasi-za-posao?page=`;
 const UA = "Mozilla/5.0 (compatible; serbia-jobs aggregator; +local personal project)";
-const PAGES = parseInt(process.argv[2] || "3", 10);
+const PAGES = parseInt(process.argv[2] || "2", 10);
 
 function extractNextData(html) {
   const m = html.match(/id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);

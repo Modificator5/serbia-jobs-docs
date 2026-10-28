@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Парсер kupujemprodajem.com — раздел Poslovi (categoryId=2546).
 // Данные берутся из __NEXT_DATA__ в листинге /pretraga.
-// Запуск: node scrapers/kupujemprodajem.js [страниц=20]
+// Запуск: node scrapers/kupujemprodajem.js [страниц=5]
+// Режим выживания: по умолчанию только свежие страницы; полный прогон: [страниц=20]
 // Разведка: docs/sources/kupujemprodajem.md
 
 const { openDb, upsertJob, categoryTag, DB_PATH } = require("./db");
@@ -10,7 +11,7 @@ const BASE = "https://www.kupujemprodajem.com";
 const CATEGORY_ID = 2546;
 const LISTING = `${BASE}/pretraga?categoryId=${CATEGORY_ID}&page=`;
 const UA = "Mozilla/5.0 (compatible; serbia-jobs aggregator; +local personal project)";
-const PAGES = parseInt(process.argv[2] || "20", 10);
+const PAGES = parseInt(process.argv[2] || "5", 10);
 
 // Мусор: ищут работу сами, продают бизнес, продают фрукты и т.п.
 const NOISE = [
@@ -53,6 +54,7 @@ function postedDate(posted) {
 
 function mapAd(ad) {
   const title = (ad.name_decoded || ad.name || "").trim();
+  const fromGroup = categoryTag(ad.group_name);
   return {
     id: `kp-${ad.ad_id}`,
     source: "kupujemprodajem",
@@ -63,9 +65,7 @@ function mapAd(ad) {
     requirements_short: null,
     company_short: null,
     snippet: (ad.description_snippet_decoded || "").trim() || null,
-    category_tag: categoryTag(ad.group_name) !== "drugo"
-      ? categoryTag(ad.group_name)
-      : categoryTag(title),
+    category_tag: fromGroup !== "drugo" ? fromGroup : categoryTag(title),
     posted_at: postedDate(ad.posted),
     parsed_at: new Date().toISOString(),
   };

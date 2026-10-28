@@ -8,17 +8,20 @@
 |---|---|---|---|
 | Poslovi Infostud | poslovi.infostud.com | Главная площадка, ~10 000 вакансий, есть зарплаты | active |
 | KupujemProdajem — Poslovi | kupujemprodajem.com/poslovi | Классифайды, физработа, мастера, доставка, HoReCa; исследование: [sources/kupujemprodajem.md](sources/kupujemprodajem.md) | active |
-| Jooble Serbia | rs.jooble.org | Агрегатор | parser |
+| Jooble Serbia | rs.jooble.org | Агрегатор; проблема: Cloudflare-челлендж | idea |
 
 ## Следующие
 
 | Площадка | URL | Заметки | Статус |
 |---|---|---|---|
+| HaloOglasi — Poslovi | halooglasi.com/poslovi | Классифайд-конкурент KP; назван обеими сетями в бэктесте (09-audit) — парсим следующим | research |
 | NSZ (гос. служба занятости) | nsz.gov.rs | База вакансий, много неофициальных | research |
-| Poslovi.rs | poslovi.rs | Категории, есть офферы | research |
+| Poslovi.rs | poslovi.rs | Категории, есть офферы; подтверждён бэктестом | research |
 | MojOglas | mojoglas.rs | Классифайды | research |
-| HelloWorld | helloworld.rs | IT-вакансии | research |
+| HelloWorld | helloworld.rs | IT-вакансии; подтверждён бэктестом (от создателей Infostud) | research |
 | Joberty | joberty.rs | IT + отзывы о компаниях | research |
+| Lako do posla | lakodoposla.com | Кадровый агрегатор; назван бэктестом | research |
+| Oglasi.rs | oglasi.rs | Доска объявлений, раздел posao; назван бэктестом | research |
 
 ## Отложено
 

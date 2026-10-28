@@ -36,6 +36,9 @@
 - Парсер KupujemProdajem (`scrapers/kupujemprodajem.js`): 450 вакансий в базе, фильтр мусора («Tražim posao», «Prodajem posao»), зарплата из заголовков, сниппеты.
 - Карточка v1: + сниппет (решение по консультации Gemini — 06-decisions); сайт показывает сниппеты.
 - Словарь: личная база знаний импортирована → `data/glossary.db` (95 terms + 30 phrasebook, verified); оригинал в `docs/glossary/bazaznanja.txt`, загрузчик `tools/import-glossary.js`.
+- Режим выживания: дефолты парсеров снижены, аудит кода и структуры → `docs/09-audit-economy.md`; CSV-снимок `snapshots/jobs.csv` (бэкап + тесты без сети).
+- Карточки сайта — в телеграм-стиле (консенсус бэктеста gemini+ollama: пустые строки убраны, город первым, сниппет 3 строки).
+- Бэктест двух сетей выполнен (журнал `logs/ask-journal.md`): следующий парсер — HaloOglasi; в очередь также helloworld.rs, lakodoposla.com, oglasi.rs (05-sources).
 
 В работе: нет.
 

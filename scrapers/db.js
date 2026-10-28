@@ -70,7 +70,9 @@ function categoryTag(name) {
   if (!name) return "drugo";
   const s = name.toLowerCase();
   for (const [needle, tag] of CATEGORY_MAP) {
-    if (s.includes(needle)) return tag;
+    // "it" — короткая игла: только как отдельное слово, иначе ловит "raditi" и т.п.
+    const hit = needle === "it" ? /(^|[^a-zčćžšđ])it([^a-zčćžšđ]|$)/.test(s) : s.includes(needle);
+    if (hit) return tag;
   }
   return "drugo";
 }
