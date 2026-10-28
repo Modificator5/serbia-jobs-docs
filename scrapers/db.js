@@ -5,6 +5,13 @@ const DB_PATH = process.env.JOBS_DB || path.join(__dirname, "..", "data", "jobs.
 
 const CATEGORY_MAP = [
   ["ugostiteljstvo", "ugostiteljstvo"],
+  ["kuvar", "ugostiteljstvo"],
+  ["kuhar", "ugostiteljstvo"],
+  ["konobar", "ugostiteljstvo"],
+  ["kuhinj", "ugostiteljstvo"],
+  ["šank", "ugostiteljstvo"],
+  ["sank", "ugostiteljstvo"],
+  ["turiz", "turizam"],
   ["trgovina", "trgovina"],
   ["prodaja", "trgovina"],
   ["it", "it"],
@@ -14,13 +21,19 @@ const CATEGORY_MAP = [
   ["gradjevin", "gradjevina"],
   ["građevin", "gradjevina"],
   ["proizvodnj", "proizvodnja"],
-  ["zanat", "proizvodnja"],
+  ["zanat", "zanat"],
+  ["majstor", "zanat"],
+  ["keramičar", "zanat"],
+  ["keramicar", "zanat"],
+  ["stolar", "zanat"],
+  ["bravar", "zanat"],
   ["zdravstv", "medicina"],
   ["medicin", "medicina"],
   ["farmac", "medicina"],
   ["administr", "administracija"],
   ["saobraćaj", "prevoz"],
   ["saobracaj", "prevoz"],
+  ["prevoz", "prevoz"],
   ["transport", "prevoz"],
   ["logistik", "prevoz"],
   ["magacin", "prevoz"],
@@ -40,7 +53,17 @@ const CATEGORY_MAP = [
   ["mašin", "proizvodnja"],
   ["masin", "proizvodnja"],
   ["elektroteh", "proizvodnja"],
-  ["higijen", "drugo"],
+  ["higijen", "higijena"],
+  ["bezbedn", "bezbednost"],
+  ["obezbeđ", "bezbednost"],
+  ["obezbed", "bezbednost"],
+  ["fizičk", "fizicki"],
+  ["fizick", "fizicki"],
+  ["čuvanj", "njega"],
+  ["cuvanj", "njega"],
+  ["negovatelj", "njega"],
+  ["negovatelj", "njega"],
+  ["dadilj", "njega"],
 ];
 
 function categoryTag(name) {
@@ -83,6 +106,7 @@ function openDb() {
       salary_max INTEGER,
       requirements_short TEXT,
       company_short TEXT,
+      snippet TEXT,
       category_tag TEXT,
       posted_at TEXT,
       parsed_at TEXT NOT NULL,
@@ -96,6 +120,10 @@ function openDb() {
       title_ru TEXT NOT NULL
     );
   `);
+  const cols = db.prepare("PRAGMA table_info(jobs)").all().map((c) => c.name);
+  if (!cols.includes("snippet")) {
+    db.exec("ALTER TABLE jobs ADD COLUMN snippet TEXT");
+  }
   return db;
 }
 
@@ -104,8 +132,8 @@ function upsertJob(db, job) {
   db.prepare(
     `INSERT INTO jobs
       (id, source, source_url, title_sr, title_ru, city, salary_raw, salary_min, salary_max,
-       requirements_short, company_short, category_tag, posted_at, parsed_at, is_published)
-     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+       requirements_short, company_short, snippet, category_tag, posted_at, parsed_at, is_published)
+     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(source_url) DO UPDATE SET
        title_sr=excluded.title_sr,
        city=excluded.city,
@@ -114,6 +142,7 @@ function upsertJob(db, job) {
        salary_max=excluded.salary_max,
        requirements_short=excluded.requirements_short,
        company_short=excluded.company_short,
+       snippet=excluded.snippet,
        category_tag=excluded.category_tag,
        posted_at=excluded.posted_at,
        parsed_at=excluded.parsed_at`
@@ -128,6 +157,7 @@ function upsertJob(db, job) {
     salary_max,
     job.requirements_short,
     job.company_short,
+    job.snippet || null,
     job.category_tag,
     job.posted_at,
     job.parsed_at

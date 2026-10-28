@@ -7,7 +7,7 @@
 | Площадка | URL | Что есть | Статус |
 |---|---|---|---|
 | Poslovi Infostud | poslovi.infostud.com | Главная площадка, ~10 000 вакансий, есть зарплаты | active |
-| KupujemProdajem — Poslovi | kupujemprodajem.com/poslovi | Классифайды, физработа, мастера, доставка, HoReCa; исследование: [sources/kupujemprodajem.md](sources/kupujemprodajem.md) | parser |
+| KupujemProdajem — Poslovi | kupujemprodajem.com/poslovi | Классифайды, физработа, мастера, доставка, HoReCa; исследование: [sources/kupujemprodajem.md](sources/kupujemprodajem.md) | active |
 | Jooble Serbia | rs.jooble.org | Агрегатор | parser |
 
 ## Следующие

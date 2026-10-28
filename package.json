@@ -6,6 +6,8 @@
   "scripts": {
     "scrape": "node scrapers/infostud.js",
     "scrape:infostud": "node scrapers/infostud.js",
+    "scrape:kp": "node scrapers/kupujemprodajem.js",
+    "import:glossary": "node tools/import-glossary.js",
     "viewer": "node viewer/server.js"
   }
 }

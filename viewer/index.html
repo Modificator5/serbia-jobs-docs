@@ -69,6 +69,7 @@ function render() {
         <span>📅 ${j.posted_at || '—'}</span>
         <span>${j.source}</span>
       </div>
+      ${j.snippet ? `<div class="req">📝 ${j.snippet}</div>` : ''}
       ${j.requirements_short ? `<div class="req">${j.requirements_short}</div>` : ''}
     </div>`).join('') || '<div class="empty">Ничего не найдено</div>';
 }

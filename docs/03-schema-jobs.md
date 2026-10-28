@@ -15,7 +15,8 @@ CREATE TABLE jobs (
   salary_max      INTEGER,
   requirements_short TEXT,                   -- 1-2 главных требования
   company_short   TEXT,                      -- имя компании
-  category_tag    TEXT,                      -- ugostiteljstvo | gradjevina | it | dostava | ...
+  snippet         TEXT,                      -- сниппет описания ~70-150 символов (серб.)
+  category_tag    TEXT,                      -- ugostiteljstvo | zanat | njega | ...
   posted_at       TEXT,                      -- дата публикации (ISO)
   parsed_at       TEXT NOT NULL,             -- когда спарсили (ISO)
   is_published    INTEGER DEFAULT 0          -- 0/1: выложено ли в канал
@@ -45,6 +46,11 @@ CREATE TABLE categories (
   name_ru  TEXT                -- 'HoReCa / рестораны'
 );
 ```
+
+Актуальные теги category_tag:
+`ugostiteljstvo, turizam, trgovina, it, gradjevina, proizvodnja, zanat, medicina,
+administracija, prevoz, dostava, poljoprivreda, obrazovanje, finansije, marketing,
+higijena, bezbednost, fizicki, njega, drugo`
 
 ## Правила
 

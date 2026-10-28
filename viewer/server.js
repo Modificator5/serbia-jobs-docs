@@ -14,7 +14,7 @@ function getJobs() {
     .prepare(
       `SELECT id, source, source_url, title_sr, title_ru, city, salary_raw,
               salary_min, salary_max, requirements_short, company_short,
-              category_tag, posted_at, is_published
+              snippet, category_tag, posted_at, is_published
        FROM jobs
        ORDER BY posted_at DESC NULLS LAST, parsed_at DESC`
     )

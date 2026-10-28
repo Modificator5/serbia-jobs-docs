@@ -4,10 +4,11 @@
 
 ```sql
 CREATE TABLE terms (
-  id            TEXT PRIMARY KEY,   -- nanoid
+  id            TEXT PRIMARY KEY,   -- hex-id
   term_sr       TEXT NOT NULL,      -- 'potreban radnik sa iskustvom'
   translation_ru TEXT,              -- 'требуется работник с опытом'
   pronunciation TEXT,               -- произношение по-русски (опционально)
+  note          TEXT,               -- пояснение / живой пример (из базы знаний)
   example_url   TEXT,               -- откуда взято (source_url вакансии)
   status        TEXT DEFAULT 'draft', -- 'draft' | 'verified'
   created_at    TEXT NOT NULL,
@@ -40,3 +41,11 @@ CREATE TABLE phrasebook (
 - Не тащить очевидное (da = да, ne = нет).
 - Приоритет: слова из требований и обязанностей (iskustvo, smena, prijava, neto, bruto...).
 - У каждой записи есть пример-источник (example_url) — иначе не проверять.
+
+## Импорт базы знаний
+
+- Источник: `docs/glossary/bazaznanja.txt` (личная база пользователя; строки-таблицы «сербский | перевод | пояснение»).
+- Загрузчик: `node tools/import-glossary.js` (идемпотентен, upsert по UNIQUE).
+- Правило разбора: строка, оканчивающаяся на `. ? ! …`, уходит в phrasebook (context = пояснение), всё остальное — в terms (note = пояснение).
+- Статус импортированных записей: `verified` (переводы проверены владельцем базы).
+- Импортировано 2026-10-28: 95 terms + 30 phrasebook.

@@ -30,5 +30,6 @@ echo "длинный промпт" | ./tools/ask.py gemini -
 ## Статус
 
 - [x] `tools/ask.py` построен и протестирован (2026-10-28): gemini ✔, ollama ✔, claude — заглушка, openrouter — без ключа.
+- [x] Журнал вызовов `logs/ask-journal.md` — каждая задача воркеру с таймстампом (для слежения извне, виден в raw-зеркале).
 - [ ] Phase B: ключ `console.anthropic.com` → включается ветка claude без доработок.
 - [ ] OpenRouter: бесплатный ключ openrouter.ai → включается ветка openrouter.

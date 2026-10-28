@@ -14,6 +14,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,7 +55,7 @@ def http_json(url: str, payload: dict, headers: dict, timeout: int = 120,
     die(last_err or "исчерпаны повторы")
 
 
-def ask_gemini(prompt: str) -> None:
+def ask_gemini(prompt: str) -> str:
     key = os.environ.get("GEMINI_API_KEY") or die("нет GEMINI_API_KEY в .env")
     model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
@@ -65,15 +66,15 @@ def ask_gemini(prompt: str) -> None:
         data = http_json(url, payload, headers)
         try:
             parts = data["candidates"][0]["content"]["parts"]
-            print("".join(p.get("text", "") for p in parts).strip())
-            return
+            return "".join(p.get("text", "") for p in parts).strip()
         except (KeyError, IndexError):
             if attempt == 2:
                 die(f"неожиданный ответ Gemini: {json.dumps(data)[:300]}")
             time.sleep(3)
+    die("исчерпаны повторы Gemini")
 
 
-def ask_ollama(prompt: str) -> None:
+def ask_ollama(prompt: str) -> str:
     model = os.environ.get("OLLAMA_MODEL", "gemma4:cloud")
     payload = {
         "model": model,
@@ -87,10 +88,10 @@ def ask_ollama(prompt: str) -> None:
         print("ask: ollama serve не запущен? (запусти: ollama serve)",
               file=sys.stderr)
         raise
-    print(data.get("message", {}).get("content", "").strip())
+    return data.get("message", {}).get("content", "").strip()
 
 
-def ask_openrouter(prompt: str) -> None:
+def ask_openrouter(prompt: str) -> str:
     key = os.environ.get("OPENROUTER_API_KEY") or die(
         "нет OPENROUTER_API_KEY в .env (бесплатный ключ: openrouter.ai)")
     model = os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
@@ -105,12 +106,12 @@ def ask_openrouter(prompt: str) -> None:
     }
     data = http_json(url, payload, headers)
     try:
-        print(data["choices"][0]["message"]["content"].strip())
+        return data["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError):
         die(f"неожиданный ответ OpenRouter: {json.dumps(data)[:300]}")
 
 
-def ask_claude(prompt: str) -> None:
+def ask_claude(prompt: str) -> str:
     key = os.environ.get("ANTHROPIC_API_KEY") or die(
         "нет ANTHROPIC_API_KEY в .env — Claude подключается позже "
         "(console.anthropic.com → ключ → строка в .env); пока используй "
@@ -129,9 +130,31 @@ def ask_claude(prompt: str) -> None:
     }
     data = http_json(url, payload, headers)
     try:
-        print("".join(b.get("text", "") for b in data["content"]).strip())
+        return "".join(b.get("text", "") for b in data["content"]).strip()
     except (KeyError, TypeError):
         die(f"неожиданный ответ Claude: {json.dumps(data)[:300]}")
+
+
+def journal(provider: str, prompt: str, answer: str) -> None:
+    """Ведёт лог вызовов: logs/ask-journal.md (виден на GitHub raw для слежения)."""
+    logs_dir = ROOT / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    path = logs_dir / "ask-journal.md"
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    model = {
+        "gemini": os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+        "ollama": os.environ.get("OLLAMA_MODEL", "gemma4:cloud"),
+        "openrouter": os.environ.get("OPENROUTER_MODEL", "free"),
+        "claude": os.environ.get("CLAUDE_MODEL", "claude"),
+    }.get(provider, provider)
+    def clip(s: str, n: int = 6000) -> str:
+        return s if len(s) <= n else s[:n] + f"\n… (обрезано, всего {len(s)} символов)"
+    entry = (
+        f"\n## {now} — {provider} ({model})\n\n"
+        f"**Задача:**\n{clip(prompt)}\n\n**Ответ:**\n{clip(answer)}\n"
+    )
+    with path.open("a", encoding="utf-8") as f:
+        f.write(entry)
 
 
 PROVIDERS = {
@@ -158,7 +181,9 @@ def main() -> None:
         die("пустой промпт (передай текстом или через stdin с '-')")
     if not prompt:
         die("пустой промпт")
-    PROVIDERS[provider](prompt)
+    answer = PROVIDERS[provider](prompt)
+    print(answer)
+    journal(provider, prompt, answer)
 
 
 if __name__ == "__main__":
