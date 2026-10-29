@@ -129,7 +129,31 @@ function openDb() {
   return db;
 }
 
+// Фильтр «только Сербия» (решение 2026-10-28): вакансии вне Сербии не
+// парсим и не храним — для русскоязычных релокантов это не вариант.
+// Только контекстные формы «в X-ии / за X-ию» — иначе ложные срабатывания
+// («nemački jezik» = немецкий язык, «švedski sto» = шведская стенка).
+const ABROAD_NEEDLES = [
+  "inostranstv", "europi", "evropi", "preko granic",
+  "u nemačkoj", "u nemackoj", "u njemackoj", "u njemačkoj",
+  "za nemačku", "za nemacku", "za njemacku",
+  "u austriji", "za austriju",
+  "u švajcarskoj", "u svajcarskoj", "za švajcarsku", "za svajcarsku",
+  "u bugarskoj", "u rumunskoj", "u makedoniji", "u crnoj gori",
+  "u švedskoj", "u svedskoj", "u norveškoj", "u norveskoj",
+  "u kataru", "u emiratima", "u belgiji", "u holandiji", "u nizozemskoj",
+  "u finskoj", "u danskoj", "u irskoj", "u španiji", "u spaniji",
+  "u francuskoj", "u turskoj", "u grčkoj", "u grckoj",
+  "u sloveniji", "u hrvatskoj", "u bosni", "u mađarskoj", "u madjarskoj",
+];
+
+function isAbroadJob(job) {
+  const s = `${job.title_sr || ""} ${job.city || ""} ${job.snippet || ""}`.toLowerCase();
+  return ABROAD_NEEDLES.some((n) => s.includes(n));
+}
+
 function upsertJob(db, job) {
+  if (isAbroadJob(job)) return false;
   const { salary_min, salary_max } = parseSalary(job.salary_raw);
   db.prepare(
     `INSERT INTO jobs
@@ -164,6 +188,7 @@ function upsertJob(db, job) {
     job.posted_at,
     job.parsed_at
   );
+  return true;
 }
 
-module.exports = { openDb, upsertJob, parseSalary, categoryTag, parseDateDMY, DB_PATH };
+module.exports = { openDb, upsertJob, parseSalary, categoryTag, parseDateDMY, isAbroadJob, DB_PATH };
