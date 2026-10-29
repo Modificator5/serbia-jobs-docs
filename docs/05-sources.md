@@ -1,6 +1,6 @@
 # Площадки-источники
 
-Статус: `idea` → `research` → `parser` → `active`
+Статус: `idea` → `research` → `parser` → `active` → `discarded`
 
 ## Стартовый набор (парсим первыми)
 
@@ -8,17 +8,17 @@
 |---|---|---|---|
 | Poslovi Infostud | poslovi.infostud.com | Главная площадка, ~10 000 вакансий, есть зарплаты | active |
 | KupujemProdajem — Poslovi | kupujemprodajem.com/poslovi | Классифайды, физработа, мастера, доставка, HoReCa; исследование: [sources/kupujemprodajem.md](sources/kupujemprodajem.md) | active |
-| Jooble Serbia | rs.jooble.org | Агрегатор; проверено 2026-10-28: Cloudflare challenge (HTTP 403 «Just a moment») — без обхода антибота (ToS-риск) парсинг невозможен; возвращаемся, если появится открытый доступ или API | idea |
+| Jooble Serbia | rs.jooble.org | Агрегатор; Cloudflare challenge (HTTP 403) — парсинг невозможен | discarded |
 
 ## Следующие
 
 | Площадка | URL | Заметки | Статус |
 |---|---|---|---|
-| HaloOglasi — Posao | halooglasi.com/posao | Классифайд; парсер готов (`scrapers/halooglasi.js`, +106 ads); в листинге нет дат/сниппетов; node-fetch → 403, грузим через curl | active |
-| NSZ (гос. служба занятости) | nsz.gov.rs | База вакансий, много неофициальных | research |
+| HaloOglasi — Posao | halooglasi.com/posao | Классифайд; парсер готов (`scrapers/halooglasi.js`); нет дат/сниппетов | active |
+| NSZ (гос. служба занятости) | nsz.gov.rs | CSR / Сложный рендеринг $\to$ слишком затратно | discarded |
 | Poslovi.rs | poslovi.rs | Категории, есть офферы; подтверждён бэктестом | research |
 | MojOglas | mojoglas.rs | Классифайды | research |
-| HelloWorld | helloworld.rs | IT-вакансии; парсер готов (scrapers/helloworld.js, +35 вакансий) | active |
+| HelloWorld | helloworld.rs | IT-вакансии; парсер готов (scrapers/helloworld.js) | active |
 | Joberty | joberty.rs | IT + отзывы о компаниях | research |
 | Lako do posla | lakodoposla.com | Кадровый агрегатор; назван бэктестом | research |
 | Oglasi.rs | oglasi.rs | Доска объявлений, раздел posao; назван бэктестом | research |
@@ -27,12 +27,12 @@
 
 | Источник | Почему отложено |
 |---|---|
-| Facebook-группы | Много мусора, мало конкретики; оставляем, будем фильтровать позже |
-| Instagram | Сложный парсинг, API нет; вернёмся после MVP |
-| LinkedIn | Агрессивная защита от парсинга; через API/вручную |
+| Facebook-группы | Много мусора, мало конкретики |
+| Instagram | Сложный парсинг, API нет |
+| LinkedIn | Агрессивная защита от парсинга |
 
 ## Технические заметки
 
 - Перед парсингом любой площадки: изучить robots.txt и структуру пагинации.
-- Всё, что спарсено, идёт в `data/raw/` → нормализация → короткая карточка.
+- Всё, что спарсено, идёт в `data/raw/` $\to$ нормализация $\to$ короткая карточка.
 - У каждой площадки свой модуль в `scrapers/`, общий интерфейс `fetch()`.

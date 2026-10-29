@@ -121,6 +121,25 @@ function openDb() {
       title_sr TEXT PRIMARY KEY,
       title_ru TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS glossary_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS glossary (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER REFERENCES glossary_categories(id),
+      term TEXT UNIQUE NOT NULL,
+      definition TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS job_words (
+      job_url TEXT NOT NULL,
+      word_id INTEGER NOT NULL,
+      context_snippet TEXT,
+      FOREIGN KEY(job_url) REFERENCES jobs(source_url),
+      FOREIGN KEY(word_id) REFERENCES glossary(id),
+      PRIMARY KEY(job_url, word_id)
+    );
   `);
   const cols = db.prepare("PRAGMA table_info(jobs)").all().map((c) => c.name);
   if (!cols.includes("snippet")) {

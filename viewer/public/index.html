@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вакансии в Сербии для русскоязычных</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        .search-box { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; }
+        .job-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; transition: transform 0.2s; }
+        .job-card:hover { transform: translateY(-3px); }
+        .job-title { font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 10px; display: block; text-decoration: none; }
+        .job-meta { font-size: 14px; color: #666; display: flex; gap: 15px; margin-bottom: 10px; }
+        .job-snippet { font-size: 15px; line-height: 1.5; color: #444; }
+        .tag { background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Работа в Сербии 🇷🇸</h1>
+            <p>Актуальный агрегатор вакансий для русскоязычных</p>
+        </header>
+        <input type="text" id="search" class="search-box" placeholder="Поиск по должности, городу или компании...">
+        <div id="jobs-list">Загрузка вакансий...</div>
+    </div>
+
+    <script>
+        async function loadJobs() {
+            try {
+                const response = await fetch('jobs.json');
+                const jobs = await response.json();
+                const list = document.getElementById('jobs-list');
+                const search = document.getElementById('search');
+
+                function render(filter = '') {
+                    const filtered = jobs.filter(j => 
+                        (j.title_sr + (j.title_ru || '') + (j.city || '') + (j.company_short || '')).toLowerCase().includes(filter.toLowerCase())
+                    );
+                    
+                    list.innerHTML = filtered.length ? filtered.map(j => `
+                        <div class="job-card">
+                            <a href="${j.source_url}" target="_blank" class="job-title">${j.title_ru || j.title_sr}</a>
+                            <div class="job-meta">
+                                <span>📍 ${j.city || 'Не указан'}</span>
+                                <span>🏢 ${j.company_short || 'Конфиденциально'}</span>
+                                <span>💰 ${j.salary_raw || 'По договоренности'}</span>
+                            </div>
+                            <div class="job-snippet">${j.snippet || 'Описание отсутствует'}</div>
+                        </div>
+                    `).join('') : '<p style="text-align:center">Ничего не найдено</p>';
+                }
+
+                search.oninput = (e) => render(e.target.value);
+                render();
+            } catch (e) {
+                document.getElementById('jobs-list').innerHTML = 'Ошибка загрузки данных.';
+            }
+        }
+        loadJobs();
+    </script>
+</body>
+</html>

@@ -111,6 +111,26 @@ def ask_openrouter(prompt: str) -> str:
         die(f"неожиданный ответ OpenRouter: {json.dumps(data)[:300]}")
 
 
+def ask_groq(prompt: str) -> str:
+    key = os.environ.get("GROQ_API_KEY") or die(
+        "нет GROQ_API_KEY в .env (бесплатный ключ: console.groq.com)")
+    model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    data = http_json(url, payload, headers)
+    try:
+        return data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError):
+        die(f"неожиданный ответ Groq: {json.dumps(data)[:300]}")
+
+
 def ask_claude(prompt: str) -> str:
     key = os.environ.get("ANTHROPIC_API_KEY") or die(
         "нет ANTHROPIC_API_KEY в .env — Claude подключается позже "
@@ -157,11 +177,31 @@ def journal(provider: str, prompt: str, answer: str) -> None:
         f.write(entry)
 
 
+def ask_groq(prompt: str) -> str:
+    key = os.environ.get("GROQ_API_KEY") or die("нет GROQ_API_KEY в .env")
+    model = "llama-3.3-70b-versatile"
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    data = http_json(url, payload, headers)
+    try:
+        return data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError):
+        die(f"неожиданный ответ Groq: {json.dumps(data)[:300]}")
+
+
 PROVIDERS = {
     "gemini": ask_gemini,
     "ollama": ask_ollama,
     "openrouter": ask_openrouter,
     "claude": ask_claude,
+    "groq": ask_groq,
 }
 
 
