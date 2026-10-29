@@ -18,7 +18,7 @@
 | NSZ (гос. служба занятости) | nsz.gov.rs | База вакансий, много неофициальных | research |
 | Poslovi.rs | poslovi.rs | Категории, есть офферы; подтверждён бэктестом | research |
 | MojOglas | mojoglas.rs | Классифайды | research |
-| HelloWorld | helloworld.rs | IT-вакансии; подтверждён бэктестом (от создателей Infostud) | research |
+| HelloWorld | helloworld.rs | IT-вакансии; парсер готов (scrapers/helloworld.js, +35 вакансий) | active |
 | Joberty | joberty.rs | IT + отзывы о компаниях | research |
 | Lako do posla | lakodoposla.com | Кадровый агрегатор; назван бэктестом | research |
 | Oglasi.rs | oglasi.rs | Доска объявлений, раздел posao; назван бэктестом | research |
