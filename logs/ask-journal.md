@@ -1191,3 +1191,131 @@
 
 **Ответ:**
 {"Consultant  for Business Software": "Консультант по программному обеспечению для бизнеса", "Majstori i pomocni radnik  za klima uredjaje": "Мастера и подсобный рабочий по кондиционерам", "Vozač kombija - B kategorija -  Moja Selidba agencija": "Водитель фургона — категория B — агентство «Moja Selidba»", "Kuvar,  pomoćni radnik, šanker/konobar": "Повар, помощник, бармен/официант", "Hitno zapošljvanje  vozaca kombija B kategorija": "Срочный найм водителя фургона категории B", "Majstor  gipsar i pomocnik gipsara": "Мастер-гипсокартонщик и помощник гипсокартонщика", "Vozac  E kategorije  ,vozac C kategorije": "Водитель категории E, водитель категории C", "Geometar i arhitekta  posao": "Работа: геодезист и архитектор", "Vozač  B i BE kategorije": "Водитель категории B и BE", "Potreban konobar ili konobarica  za rad u kafanici": "Требуется официант или официантка для работы в кафе"}
+
+## 2026-10-28 18:59:36 — ollama (gemma4:cloud)
+
+**Задача:**
+Переведи сербские названия вакансий на русский. Строго JSON-объект {"оригинал":"перевод"}, без markdown, без пояснений, один объект.
+"Prevoz radnika"
+"Nega i pomoć starijim i nepokretnim osobama"
+"Elektricni pastir elektricna cobanica"
+"Pozicija"
+"Produkt dizajner"
+"Functional Consultant MES"
+"Senior AI Engineer (LLM &amp; Edge AI)"
+"Data Platform Engineer (DataOps)"
+"Senior Marketing Manager"
+"Full Stack Angular/NodeJS Developer"
+"Product Owner"
+"Application Security Engineer"
+"Data Analytics &amp; AI Support Internship"
+"SEO &amp; Growth Marketing Specialist"
+"SAP Functional Consultant (Order-to-Cash)"
+"IT Security Engineer – Focus on SIEM &amp; SOC"
+"Marketing Specialist (German required)"
+"IT Operations and Support Intern"
+"AI Solution Expert (Agentic AI &amp; Business Process Automation)"
+"IT &amp; Process Support Specialist"
+"Senior Project Manager"
+"B2B Sales Representative – AI Voicebot"
+"DevOps Engineer - Belgrade, hybrid"
+"Product Designer"
+"Infrastructure Engineer - Belgrade, hybrid"
+"Platform Automation Engineer - Belgrade or Warsaw, hybrid"
+"Concept Artist"
+"Senior DevOps Engineer (Azure)"
+"Trainee Functional Consultant MES"
+"Global Project Assurance Consultant"
+"Oracle DBA Consultant"
+"C# Game Developer"
+"Product Security Analyst"
+"Senior QA Engineer"
+"Sales Engineer"
+"IT Customer Service &amp; Sales Consultant"
+"Backend Developer"
+"Senior Full Stack Web Software Developer (Contract)"
+"Senior Full Stack Developer"
+
+**Ответ:**
+{
+"Prevoz radnika": "Перевозка рабочих",
+"Nega i pomoć starijim i nepokretnim osobama": "Уход и помощь пожилым и маломобильным людям",
+"Elektricni pastir elektricna cobanica": "Электрический пастух (оператор)",
+"Pozicija": "Позиция",
+"Produkt dizajner": "Продуктовый дизайнер",
+"Functional Consultant MES": "Функциональный консультант MES",
+"Senior AI Engineer (LLM & Edge AI)": "Старший инженер по ИИ (LLM и Edge AI)",
+"Data Platform Engineer (DataOps)": "Инженер платформ данных (DataOps)",
+"Senior Marketing Manager": "Старший менеджер по маркетингу",
+"Full Stack Angular/NodeJS Developer": "Full Stack разработчик Angular/NodeJS",
+"Product Owner": "Владелец продукта",
+"Application Security Engineer": "Инженер по безопасности приложений",
+"Data Analytics & AI Support Internship": "Стажировка по аналитике данных и поддержке ИИ",
+"SEO & Growth Marketing Specialist": "Специалист по SEO и Growth-маркетингу",
+"SAP Functional Consultant (Order-to-Cash)": "Функциональный консультант SAP (Order-to-Cash)",
+"IT Security Engineer – Focus on SIEM & SOC": "Инженер по ИТ-безопасности (SIEM и SOC)",
+"Marketing Specialist (German required)": "Специалист по маркетингу (требуется немецкий язык)",
+"IT Operations and Support Intern": "Стажер по ИТ-операциям и поддержке",
+"AI Solution Expert (Agentic AI & Business Process Automation)": "Эксперт по ИИ-решениям (агентный ИИ и автоматизация бизнес-процессов)",
+"IT & Process Support Specialist": "Специалист по поддержке ИТ и процессов",
+"Senior Project Manager": "Старший руководитель проектов",
+"B2B Sales Representative – AI Voicebot": "Менеджер по B2B продажам (ИИ-голосовые боты)",
+"DevOps Engineer - Belgrade, hybrid": "DevOps-инженер (Белград, гибрид)",
+"Product Designer": "Продуктовый дизайнер",
+"Infrastructure Engineer - Belgrade, hybrid": "Инженер по инфраструктуре (Белград, гибрид)",
+"Platform Automation Engineer - Belgrade or Warsaw, hybrid": "Инженер по автоматизации платформ (Белград или Варшава, гибрид)",
+"Concept Artist": "Концепт-художник",
+"Senior DevOps Engineer (Azure)": "Старший DevOps-инженер (Azure)",
+"Trainee Functional Consultant MES": "Стажер-функциональный консультант MES",
+"Global Project Assurance Consultant": "Глобальный консультант по контролю качества проектов",
+"Oracle DBA Consultant": "Консультант Oracle DBA",
+"C# Game Developer": "Разработчик игр на C#",
+"Product Security Analyst": "Аналитик по безопасности продукта",
+"Senior QA Engineer": "Старший инженер по тестированию (QA)",
+"Sales Engineer": "Инженер по продажам",
+"IT Customer Service & Sales Consultant": "Консультант по обслуживанию клиентов и продажам в сфере ИТ",
+"Backend Developer": "Backend-разработчик",
+"Senior Full Stack Web Software Developer (Contract)": "Старший Full Stack веб-разработчик (контракт)",
+"Senior Full Stack Developer": "Старший Full Stack разработчик"
+}
+
+## 2026-10-28 19:00:13 — gemini (gemini-3.5-flash)
+
+**Задача:**
+Переведи сербские названия вакансий на русский. Строго JSON-объект {"оригинал":"перевод"}, без markdown, без пояснений, один объект.
+"Senior AI Engineer (LLM &amp; Edge AI)"
+"Data Analytics &amp; AI Support Internship"
+"SEO &amp; Growth Marketing Specialist"
+"IT Security Engineer – Focus on SIEM &amp; SOC"
+"AI Solution Expert (Agentic AI &amp; Business Process Automation)"
+"IT &amp; Process Support Specialist"
+"IT Customer Service &amp; Sales Consultant"
+
+**Ответ:**
+{"Senior AI Engineer (LLM &amp; Edge AI)": "Старший инженер по ИИ (LLM и Edge AI)", "Data Analytics &amp; AI Support Internship": "Стажировка в области аналитики данных и поддержки ИИ", "SEO &amp; Growth Marketing Specialist": "Специалист по SEO и Growth-маркетингу", "IT Security Engineer – Focus on SIEM &amp; SOC": "Инженер по ИТ-безопасности (фокус на SIEM и SOC)", "AI Solution Expert (Agentic AI &amp; Business Process Automation)": "Эксперт по ИИ-решениям (агентный ИИ и автоматизация бизнес-процессов)", "IT &amp; Process Support Specialist": "Специалист по поддержке ИТ и процессов", "IT Customer Service &amp; Sales Consultant": "Консультант по ИТ-обслуживанию клиентов и продажам"}
+
+## 2026-10-28 19:00:50 — ollama (gemma4:cloud)
+
+**Задача:**
+У нас база вакансий Сербии: 646 строк, 4 источника (kupujemprodajem 445 — классифайд: заголовок+город+сниппет+дата, компании и зарплаты почти нет; infostud 60 — агрегатор со зарплатами; halooglasi 106 — компания есть, дат и сниппетов нет; helloworld 35 — IT: компания+город+формат работы, зарплаты нет). Известные проблемы: дубли одной вакансии по разным городам (KP), дубли между страницами (helloworld повторяет промо), зарплата только у ~65 из 646, дат нет у 141. Вопрос: назови ТОП-3 дешёвых улучшения качества данных (без захода на страницы объявлений, только по текущей базе), которые дадут максимум пользы читателю-русскому. Коротко, до 8 строк.
+
+**Ответ:**
+1. **Дедупликация и очистка**: удалить повторы (helloworld) и схлопнуть дубли по городам (KP), оставив одну запись. Это уберет «шум» и даст реальный объем рынка.
+2. **Нормализация городов и форматов**: привести названия городов и типов работы (удаленка/офис) к единому виду. Поможет пользователю быстро фильтровать вакансии.
+3. **Классификация по источникам (Теги)**: добавить колонку «Тип источника» (IT, Классифайд, Агрегатор). Это объяснит читателю, почему в одной строке есть зарплата, а в другой — только сниппет.
+
+## 2026-10-28 19:01:30 — gemini (gemini-3.5-flash)
+
+**Задача:**
+Карта маршрутизации задач для бесплатной сети ИИ (главный агент OpenCode экономит токены): для каждого типа (1. перевод текстов, 2. исследование сайтов/структуры, 3. аналитика и ревью, 4. генерация кода, 5. бытовые ответы пользователю) — какой воркер: Ollama, Gemini, субагент с curl, или сам OpenCode, и однострочная причина. Плюс 4 бесплатных API-сервиса для расширения сети (название + что даёт). По-русски, до 14 строк, только список.
+
+**Ответ:**
+1. Перевод текстов — Gemini: высокий лимит токенов и естественное качество перевода длинных документов.
+2. Исследование сайтов/структуры — Субагент с curl: быстро собирает сырой HTML/API без траты токенов нейросетей.
+3. Аналитика и ревью — OpenCode: сложная логика требует точности и полного контекста главного агента.
+4. Генерация кода — Ollama: локальный инференс кодовых моделей (DeepSeek/Qwen) без лимитов API и задержек сети.
+5. Бытовые ответы пользователю — Gemini: быстрая Flash-модель отвечает на простые вопросы, экономя ресурсы.
+6. Groq API — молниеносный инференс моделей Llama 3 и Mixtral с щедрым бесплатным лимитом запросов.
+7. OpenRouter API — единый доступ к множеству абсолютно бесплатных Open Source моделей через один ключ.
+8. Tavily API — бесплатный веб-поиск (1000 запросов/мес), оптимизированный для получения чистых данных AI-агентами.
+9. Hugging Face Inference API — бесплатный хостинг и доступ к тысячам узкоспециализированных открытых моделей.
