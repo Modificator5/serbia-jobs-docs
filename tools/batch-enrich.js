@@ -3,28 +3,35 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("path");
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 20;
 
 function askAI(prompt) {
-  const core = fs.readFileSync(path.join(__dirname, "../prompts/worker-core.md"), "utf8");
-  const analyst = fs.readFileSync(path.join(__dirname, "../prompts/worker-analyst.md"), "utf8");
+  const corePath = path.join(__dirname, "../prompts/worker-core.md");
+  const analystPath = path.join(__dirname, "../prompts/worker-analyst.md");
   
-  const fullPrompt = `${core}\\n${analyst}\\n\\n${prompt}`;
+  const core = fs.readFileSync(corePath, "utf8");
+  const analyst = fs.readFileSync(analystPath, "utf8");
   
-  const result = execFileSync("python3", ["tools/ask.py", "gemini", fullPrompt], {
-    encoding: "utf8",
-    maxBuffer: 10 * 1024 * 1024
-  });
-  return result.trim();
+  const fullPrompt = `${core}\n${analyst}\n\n${prompt}`;
+  
+  try {
+    const result = execFileSync("python3", ["tools/ask.py", "gemini", fullPrompt], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024
+    });
+    return result.trim();
+  } catch (e) {
+    console.error(`AI call failed: ${e.message}`);
+    return null;
+  }
 }
 
 async function processBatch() {
   const db = openDb();
   
-  // Находим вакансии без перевода
-  const pending = db.prepare("SELECT id, source_url, title_sr, snippet FROM jobs WHERE title_ru IS NULL LIMIT ?").all(BATCH_SIZE);
+  const pending = db.prepare("SELECT id, source_url, title_sr, snippet FROM jobs WHERE title_ru IS NULL OR title_ru = '' LIMIT ?").all(BATCH_SIZE);
   
-  if (!pending.length) {
+  if (!pending || pending.length === 0) {
     console.log("No pending vacancies for translation.");
     db.close();
     return;
@@ -54,31 +61,36 @@ ${JSON.stringify(pending, null, 2)}
 ]
 `;
 
-  try {
-    const response = askAI(prompt);
-    const results = JSON.parse(response);
+  const response = askAI(prompt);
+  if (!response) {
+    db.close();
+    return;
+  }
 
+  try {
+    const results = JSON.parse(response);
     for (const res of results) {
-      // 1. Обновляем перевод вакансии
       db.prepare("UPDATE jobs SET title_ru = ? WHERE id = ?").run(res.title_ru, res.id);
 
-      // 2. Добавляем термины в глоссарий
       if (res.terms) {
         for (const t of res.terms) {
           db.prepare("INSERT OR IGNORE INTO glossary (term, definition) VALUES (?, ?)")
             .run(t.term, t.definition);
           
-          const wordId = db.prepare("SELECT id FROM glossary WHERE term = ?").get(t.term).id;
-          
-          // Связываем вакансию с терминами
-          db.prepare("INSERT OR IGNORE INTO job_words (job_url, word_id) VALUES (?, ?)")
-            .run(pending.find(p => p.id === res.id).source_url, wordId);
+          const word = db.prepare("SELECT id FROM glossary WHERE term = ?").get(t.term);
+          if (word) {
+            const job = pending.find(p => p.id === res.id);
+            if (job) {
+              db.prepare("INSERT OR IGNORE INTO job_words (job_url, word_id) VALUES (?, ?)")
+                .run(job.source_url, word.id);
+            }
+          }
         }
       }
     }
     console.log(`Successfully processed ${results.length} vacancies.`);
   } catch (e) {
-    console.error(`Batch error: ${e.message}`);
+    console.error(`JSON parse error: ${e.message}`);
   }
 
   db.close();

@@ -2154,3 +2154,892 @@ module.exports = { fetch };
     ]
   }
 ]
+
+## 2026-10-30 11:28:25 — gemini (gemini-3.5-flash)
+
+**Задача:**
+# WORKER-CORE: Базовая инструкция для всех воркеров-агентов
+
+Ты — специализированный безголовый воркер (headless worker). Твоя единственная цель — предоставлять максимально точный и лаконичный результат с минимальным количеством токенов.
+
+## ЖЕСТКИЕ ПРАВИЛА:
+1. **НИКАКИХ ВСТУПЛЕНИЙ**: Запрещены фразы "Конечно", "Вот ваше решение", "Я проанализировал", "Надеюсь, это поможет".
+2. **НИКАКИХ ВЫВОДОВ**: Запрещены резюме, пояснения в конце или советы.
+3. **НИКАКИХ КОММЕНТАРИЕВ**: Не объясняй, почему ты сделал так или иначе, если об этом не просили прямо.
+4. **ТОЛЬКО РЕЗУЛЬТАТ**: Выдавай только то, что запрашивается (код, список, JSON, ответ "Да/Нет").
+5. **ФОРМАТ**: Если запрошен конкретный формат (JSON, CSV) — любой символ вне этого формата считается ошибкой.
+
+Нарушение любого из этих правил приводит к отклонению результата.
+# WORKER-ANALYST: Инструкция для анализа
+
+Используй WORKER-CORE как базу.
+
+## ДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА:
+1. **СТРУКТУРА**: Ответ должен быть в виде списка, таблицы или JSON.
+2. **ТОЛЬКО ФАКТЫ**: Никаких предположений, интерпретаций или "вероятно". Только то, что подтверждено данными.
+3. **КРАТКОСТЬ**: Используй минимально возможное количество слов для передачи смысла.
+4. **ПРЯМОТА**: Ответ на вопрос должен быть первым словом (Да/Нет/Неизвестно), затем следуют supporting facts. Задача: Проанализируй текущий подход к парсингу в проекте 'Сербия — работа для русскоязычных'.
+Текущий стек: Node.js $\to$ curl/fetch $\to$ SQLite (upsert).
+Специфика: Разные сайты (SSR, CSR), жесткая экономия токенов LLM.
+
+Проведи сравнительный анализ:
+1) Текущий подход (Специфичный скрипт $\to$ запись в БД).
+2) Идеальный подход для масштабируемости и экономии: (например: Унифицированный формат вывода $\to$ Очередь $\to$ Batch-обработчик $\to$ БД).
+Сравни их по критериям:
+- Сложность поддержки (при добавлении 10+ сайтов).
+- Расход токенов LLM (переводы, извлечение слов).
+- Надежность (обработка ошибок, блокировки).
+- Скорость разработки.
+Выдай результат в виде таблицы: 'Критерий | Текущий подход | Идеальный подход | Вердикт'.
+
+**Ответ:**
+| Критерий | Текущий подход | Идеальный подход | Вердикт |
+| :--- | :--- | :--- | :--- |
+| **Сложность поддержки (10+ сайтов)** | Высокая: дублирование кода, отсутствие единого контракта данных, сложность отслеживания поломок. | Низкая: изоляция парсеров через единый DTO/схему, централизованный пайплайн. | Идеальный подход |
+| **Расход токенов LLM** | Высокий: обработка каждого элемента отдельно, возможна отправка неотфильтрованного шума/дублей. | Минимальный: предварительная очистка text/HTML, дедупликация, объединение в батчи перед отправкой в LLM. | Идеальный подход |
+| **Надежность (ошибки, блокировки)** | Низкая: блокировка IP останавливает процесс, сбой скрипта приводит к потере данных, нет Retry-логики. | Высокая: очереди с авто-ретраями (DLQ), ротация прокси, изоляция сбоев отдельных источников. | Идеальный подход |
+| **Скорость разработки** | Высокая на старте (1-3 сайта), экспоненциально падает при росте числа источников. | Низкая на этапе архитектуры, высокая при добавлении 4+ сайтов по шаблону. | Идеальный подход (на дистанции) |
+
+## 2026-10-30 12:31:10 — gemini (gemini-3.5-flash)
+
+**Задача:**
+# AI.md — Единая точка входа для всех ИИ в проекте
+
+Если ты подключился к этому репозиторию — ты либо Воркер, либо Главный Инженер (OpenCode).
+
+## Иерархия управления
+1. **Пользователь**: Задает цели и принимает финальные решения.
+2. **OpenCode (Главный Инженер)**: Управляет воркерами, синтезирует результаты, пишет код, делает коммиты.
+3. **Воркеры (Gemini, Groq, Ollama, OpenRouter)**: Выполняют узкие задачи в «безголовом» режиме.
+
+## Стиль общения и оформления
+- **ЗАПРЕЩЕНЫ** символы-стрелки ($\to$) и подобные сокращения в ответах пользователю.
+- Вместо них используй полноценные слова: «затем», «переходит в», «результатом является», «следующий шаг:».
+- Никакой «воды», лишних вступлений и пустых вежливых фраз.
+- Ответы должны быть лаконичными, но профессиональными.
+
+## Правила для всех ИИ
+1. **Соблюдай Политику Экономии**: См. `docs/delegation-policy.md`.
+2. **Безголовый режим**: Если ты воркер $\to$ используй инструкции из `prompts/worker-*.md`. Никакого лишнего текста.
+3. **Документация**: Все результаты исследований сохраняются в `docs/`.
+4. **Код**: Код пишет и коммитит только OpenCode.
+
+## Первый ответ (для новых ИИ)
+1. Прочитай: `AI.md` $\to$ `docs/delegation-policy.md` $\to$ `docs/07-progress.md`.
+2. Ответь: кто ты в иерархии и готов ли работать по правилам жесткой экономии.
+3. Жди задачу.
+
+## Полезные файлы
+- `docs/05-sources.md` — площадки и статусы.
+- `docs/02-architecture.md` — архитектура системы.
+- `docs/06-decisions.md` — принятые решения.
+- `docs/08-agents.md` — карта доступных агентов.
+# Политика Жесткой Экономии и Делегирования
+
+Этот документ является высшим законом взаимодействия OpenCode с внешними ИИ-агентами в данном репозитории. Цель: минимизировать затраты ресурсов главного инженера (OpenCode) и обеспечить максимальное качество за счет синтеза мнений.
+
+## 1. Принцип «Сначала Воркеры»
+OpenCode запрещено самостоятельно «придумывать» решение для любой нетривиальной задачи. Любое действие должно проходить через цикл делегирования.
+
+**Цепочка обработки:**
+`Задача` $\to$ `Запрос к 2+ воркерам (Gemini/Groq/Ollama)` $\to$ `Сбор сырых результатов` $\to$ `Сравнение и верификация (OpenCode)` $\to$ `Финальный результат пользователю`.
+
+## 2. Матрица Делегирования
+
+| Тип задачи | Рекомендуемые Воркеры | Роль каждого |
+|---|---|---|
+| **Новый код / Исправление багов** | Groq + Gemini | Groq: скорость и синтаксис; Gemini: логика и архитектура |
+| **Анализ сайтов / API / Документации** | Gemini + OpenRouter | Gemini: глубокий разбор; OpenRouter: кросс-проверка |
+| **Массовая обработка / Перевод** | Ollama | Локальный прогон без лимитов и затрат |
+| **Сложные архитектурные изменения** | Gemini $\to$ OpenCode $\to$ Groq (review) | Gemini предлагает $\to$ OpenCode фильтрует $\to$ Groq ищет дыры |
+
+## 3. Правила взаимодействия (Безголовый режим)
+Все запросы к воркерам должны использовать инструкции из `prompts/worker-*.md`.
+- **Никакого «шума»**: Воркеры выдают только сырые данные.
+- **Взаимная проверка**: Если результаты двух воркеров расходятся, OpenCode обязан провести третий запрос для разрешения конфликта или провести ручной аудит.
+
+## 4. Формат финального вывода для пользователя
+Ответ OpenCode должен быть синтезом:
+1. **[Сравнение]**: Кратко, в чем разошлись или совпали воркеры.
+2. **[Вердикт]**: Почему выбрано конкретное решение.
+3. **[Результат]**: Итоговый код/текст.
+4. **[Действие]**: Четкий вопрос к пользователю для утверждения.
+# Регламент синхронизации и публикации (Sync Policy)
+
+Этот документ определяет, как изменения перемещаются из локального окружения в GitHub и как обеспечивается публичный доступ к данным.
+
+## 1. Локальная разработка vs GitHub
+Чтобы минимизировать лишние коммиты и расход ресурсов, принят следующий режим:
+- **Локально**: Весь цикл (Парсинг $\to$ Перевод $\to$ Обновление БД $\to$ Тесты).
+- **GitHub**: Используется как архив кода и хостинг статических данных.
+- **Синхронизация**: 
+  - Код (скрипты, конфиги) $\to$ Push по завершении каждой крупной задачи.
+  - Данные (БД) $\to$ Не пушатся в Git (в `.gitignore`).
+  - Публичный доступ $\to$ Экспорт данных в статичный формат (JSON/HTML) $\to$ Push в зеркало.
+
+## 2. Публичный доступ (Public Viewer)
+Поскольку GitHub Pages не поддерживает SQLite, схема публикации следующая:
+1. **Экспорт**: Раз в сутки (или по запросу) запускается `tools/export-snapshot.js`.
+2. **Формат**: База вакансий конвертируется в один или несколько `.json` файлов.
+3. **Хостинг**: JSON-файлы пушатся в публичный репозиторий (`serbia-jobs-docs` или отдельный `jobs-data`).
+4. **Frontend**: Статичный HTML/JS сайт (на GitHub Pages) подгружает эти JSON-файлы и отображает вакансии пользователям.
+
+## 3. Гигиена данных (Data Cleaning)
+Для предотвращения раздувания базы и актуальности вакансий:
+- **Правило 30 дней**: Все вакансии, дата публикации которых (`posted_at`) старше 30 дней, считаются неактуальными.
+- **Автоматизация**: Создается скрипт `tools/cleanup.js`, который удаляет старые записи.
+- **Cron**: Скрипт добавляется в `tools/daily.sh` и запускается по расписанию.
+# System State: Сербия — работа для русскоязычных
+
+Этот документ является «пульсом» проекта. Он фиксирует текущее состояние, ресурсы и вектор развития.
+
+## 1. Инфраструктура и Агенты
+| Роль | Инструмент | Статус | Нагрузка / Лимиты |
+|---|---|---|---|
+| **Главный Инженер** | OpenCode (gemma4:cloud) | Активен | Основной контроль, синтез |
+| **Воркер-Аналитик** | Gemini 1.5 Flash | Активен | Быстрый анализ, архитектура |
+| **Воркер-Синтаксис** | Groq (Llama 3.3) | Нестабилен (403) | Скорость, ревью кода |
+| **Воркер-Рутина** | Ollama (local) | Активен | Массовые переводы, локальные задачи |
+| **Запасной** | OpenRouter | Ограничен (Free) | Кросс-проверка |
+
+## 2. Метрики и Сложность
+- **Сложность системы**: Средняя (потоковая обработка: Парсинг $\to$ Перевод $\to$ База).
+- **Расход токенов**: Оптимизирован через `worker-*.md` и кэш `professions`.
+- **Критическая точка**: Высокая зависимость от доступности внешних API (Gemini/Groq).
+
+## 3. Текущий статус парсинга
+- **Active**: Infostud
+… (обрезано, всего 9290 символов)
+
+**Ответ:**
+### [Сравнение]
+1. **Текущее состояние**: 7 отдельных файлов (около 250 строк). Содержат дублирование запретов на «воду», разрозненные инструкции для воркеров, повторяющиеся правила коммуникации и описания процессов.
+2. **Оптимизированное состояние**: 1 единый документ (около 75 строк). Сохраняет 100% жесткости правил, иерархию, регламент синхронизации, правила работы воркеров и текущий контекст проекта.
+3. **Экономия ресурсов**: Сокращение объема входного контекста на 65–70%, что существенно снижает расход токенов при каждом старте сессии ИИ.
+
+---
+
+### [Вердикт]
+Инструкции избыточны за счет фрагментации. Их необходимо объединить в один сводный файл `SYSTEM.md` (или обновить `AI.md`), который станет единственной точкой входа. Все специфичные роли воркеров (аналитик, кодер) сводятся к краткой матрице ограничений.
+
+---
+
+### [Результат]
+
+Ниже представлен проект единого сжатого регламента:
+
+```markdown
+# SYSTEM.md — Единый протокол проекта «Сербия: работа»
+
+## 1. Иерархия и Роли
+- Пользователь: Задает цели, утверждает финальные решения.
+- OpenCode (Главный Инженер): Управляет воркерами, проверяет результаты, пишет код, делает коммиты.
+- Воркеры (Gemini, Groq, Ollama, OpenRouter): Выполняют узкие задачи в безголовом режиме.
+
+## 2. Жесткие правила коммуникации
+- ЗАПРЕЩЕНЫ символы-стрелки и любые их аналогии. Используй слова: «затем», «переходит в», «результатом является».
+- ЗАПРЕЩЕНЫ вежливые вступления, промежуточные пояснения и итоговые выводы («вода»).
+- Ответ OpenCode пользователю всегда содержит 4 блока: [Сравнение], [Вердикт], [Результат], [Действие].
+
+## 3. Матрица делегирования и воркеры
+Принцип: Сначала воркеры, затем синтез OpenCode.
+
+| Тип задачи | Исполнители | Ограничения формата |
+|---|---|---|
+| Анализ / API / Архитектура | Gemini (логика) + OpenRouter (проверка) | Только факты. Ответ начинается со слов: Да, Нет или Неизвестно. Затем список. |
+| Код / Баги / Синтаксис | Groq (скорость) + Gemini (архитектура) | Только исполняемый код. Без маркдаун-оболочек, без комментариев внутри. |
+| Рутина / Перевод / Батчинг | Ollama (локально) | Только запрошенный структурированный формат (JSON, CSV). |
+
+Правило безголового режима: Воркер выдает исключительно конечный результат. Любой текст вне запрошенного формата считается ошибкой.
+
+## 4. Регламент синхронизации и данных
+- Локально: Полный цикл (Парсинг, Перевод, БД, Тесты). SQLite БД находится в .gitignore.
+- GitHub: Только исходный код скриптов и конфиги.
+- Публикация: Скрипт tools/export-snapshot.js экспортирует БД в JSON. JSON пушится в репозиторий для GitHub Pages.
+- Ротация: Вакансии старше 30 дней удаляются скриптом tools/cleanup.js.
+
+## 5. Текущее состояние и Backlog
+- Активные парсеры: Infostud, KupujemProdajem, HaloOglasi, HelloWorld.
+- Отклонены: NSZ (CSR), Jooble (Cloudflare).
+- Приоритетные задачи:
+  1. Исследовать API NSZ для обхода CSR.
+  2. Внедрить батчинг перевода вакансий.
+  3. Объединить jobs.db и glossary.db.
+  4. Создать tools/cleanup.js (очистка 30+ дней).
+  5. Настроить JSON-экспорт для Public Viewer.
+```
+
+---
+
+### [Действие]
+Утвердить замену текущих файлов `AI.md`, `docs/delegation-policy.md`, `docs/sync-policy.md`, `docs/07-progress.md` и всех файлов из `prompts/worker-*.md` на данный единый регламент `SYSTEM.md`?
+
+## 2026-10-30 13:27:20 — gemini (gemini-3.5-flash)
+
+**Задача:**
+# AI.md — Единая точка входа для всех ИИ в проекте
+
+Если ты подключился к этому репозиторию — ты либо Воркер, либо Главный Инженер (OpenCode).
+
+## Иерархия управления
+1. **Пользователь**: Задает цели и принимает финальные решения.
+2. **OpenCode (Главный Инженер)**: Управляет воркерами, синтезирует результаты, пишет код, делает коммиты.
+3. **Воркеры (Gemini, Groq, Ollama, OpenRouter)**: Выполняют узкие задачи в «безголовом» режиме.
+
+## Стиль общения и оформления
+- **ЗАПРЕЩЕНЫ** символы-стрелки ($\to$) и подобные сокращения в ответах пользователю.
+- Вместо них используй полноценные слова: «затем», «переходит в», «результатом является», «следующий шаг:».
+- Никакой «воды», лишних вступлений и пустых вежливых фраз.
+- Ответы должны быть лаконичными, но профессиональными.
+
+## Правила для всех ИИ
+1. **Соблюдай Политику Экономии**: См. `docs/delegation-policy.md`.
+2. **Безголовый режим**: Если ты воркер $\to$ используй инструкции из `prompts/worker-*.md`. Никакого лишнего текста.
+3. **Документация**: Все результаты исследований сохраняются в `docs/`.
+4. **Код**: Код пишет и коммитит только OpenCode.
+
+## Первый ответ (для новых ИИ)
+1. Прочитай: `AI.md` $\to$ `docs/delegation-policy.md` $\to$ `docs/07-progress.md`.
+2. Ответь: кто ты в иерархии и готов ли работать по правилам жесткой экономии.
+3. Жди задачу.
+
+## Полезные файлы
+- `docs/05-sources.md` — площадки и статусы.
+- `docs/02-architecture.md` — архитектура системы.
+- `docs/06-decisions.md` — принятые решения.
+- `docs/08-agents.md` — карта доступных агентов.
+# Политика Жесткой Экономии и Делегирования
+
+Этот документ является высшим законом взаимодействия OpenCode с внешними ИИ-агентами в данном репозитории. Цель: минимизировать затраты ресурсов главного инженера (OpenCode) и обеспечить максимальное качество за счет синтеза мнений.
+
+## 1. Принцип «Сначала Воркеры»
+OpenCode запрещено самостоятельно «придумывать» решение для любой нетривиальной задачи. Любое действие должно проходить через цикл делегирования.
+
+**Цепочка обработки:**
+`Задача` $\to$ `Запрос к 2+ воркерам (Gemini/Groq/Ollama)` $\to$ `Сбор сырых результатов` $\to$ `Сравнение и верификация (OpenCode)` $\to$ `Финальный результат пользователю`.
+
+## 2. Матрица Делегирования
+
+| Тип задачи | Рекомендуемые Воркеры | Роль каждого |
+|---|---|---|
+| **Новый код / Исправление багов** | Groq + Gemini | Groq: скорость и синтаксис; Gemini: логика и архитектура |
+| **Анализ сайтов / API / Документации** | Gemini + OpenRouter | Gemini: глубокий разбор; OpenRouter: кросс-проверка |
+| **Массовая обработка / Перевод** | Ollama | Локальный прогон без лимитов и затрат |
+| **Сложные архитектурные изменения** | Gemini $\to$ OpenCode $\to$ Groq (review) | Gemini предлагает $\to$ OpenCode фильтрует $\to$ Groq ищет дыры |
+
+## 3. Правила взаимодействия (Безголовый режим)
+Все запросы к воркерам должны использовать инструкции из `prompts/worker-*.md`.
+- **Никакого «шума»**: Воркеры выдают только сырые данные.
+- **Взаимная проверка**: Если результаты двух воркеров расходятся, OpenCode обязан провести третий запрос для разрешения конфликта или провести ручной аудит.
+
+## 4. Формат финального вывода для пользователя
+Ответ OpenCode должен быть синтезом:
+1. **[Сравнение]**: Кратко, в чем разошлись или совпали воркеры.
+2. **[Вердикт]**: Почему выбрано конкретное решение.
+3. **[Результат]**: Итоговый код/текст.
+4. **[Действие]**: Четкий вопрос к пользователю для утверждения.
+# Регламент синхронизации и публикации (Sync Policy)
+
+Этот документ определяет, как изменения перемещаются из локального окружения в GitHub и как обеспечивается публичный доступ к данным.
+
+## 1. Локальная разработка vs GitHub
+Чтобы минимизировать лишние коммиты и расход ресурсов, принят следующий режим:
+- **Локально**: Весь цикл (Парсинг $\to$ Перевод $\to$ Обновление БД $\to$ Тесты).
+- **GitHub**: Используется как архив кода и хостинг статических данных.
+- **Синхронизация**: 
+  - Код (скрипты, конфиги) $\to$ Push по завершении каждой крупной задачи.
+  - Данные (БД) $\to$ Не пушатся в Git (в `.gitignore`).
+  - Публичный доступ $\to$ Экспорт данных в статичный формат (JSON/HTML) $\to$ Push в зеркало.
+
+## 2. Публичный доступ (Public Viewer)
+Поскольку GitHub Pages не поддерживает SQLite, схема публикации следующая:
+1. **Экспорт**: Раз в сутки (или по запросу) запускается `tools/export-snapshot.js`.
+2. **Формат**: База вакансий конвертируется в один или несколько `.json` файлов.
+3. **Хостинг**: JSON-файлы пушатся в публичный репозиторий (`serbia-jobs-docs` или отдельный `jobs-data`).
+4. **Frontend**: Статичный HTML/JS сайт (на GitHub Pages) подгружает эти JSON-файлы и отображает вакансии пользователям.
+
+## 3. Гигиена данных (Data Cleaning)
+Для предотвращения раздувания базы и актуальности вакансий:
+- **Правило 30 дней**: Все вакансии, дата публикации которых (`posted_at`) старше 30 дней, считаются неактуальными.
+- **Автоматизация**: Создается скрипт `tools/cleanup.js`, который удаляет старые записи.
+- **Cron**: Скрипт добавляется в `tools/daily.sh` и запускается по расписанию.
+# System State: Сербия — работа для русскоязычных
+
+Этот документ является «пульсом» проекта. Он фиксирует текущее состояние, ресурсы и вектор развития.
+
+## 1. Инфраструктура и Агенты
+| Роль | Инструмент | Статус | Нагрузка / Лимиты |
+|---|---|---|---|
+| **Главный Инженер** | OpenCode (gemma4:cloud) | Активен | Основной контроль, синтез |
+| **Воркер-Аналитик** | Gemini 1.5 Flash | Активен | Быстрый анализ, архитектура |
+| **Воркер-Синтаксис** | Groq (Llama 3.3) | Нестабилен (403) | Скорость, ревью кода |
+| **Воркер-Рутина** | Ollama (local) | Активен | Массовые переводы, локальные задачи |
+| **Запасной** | OpenRouter | Ограничен (Free) | Кросс-проверка |
+
+## 2. Метрики и Сложность
+- **Сложность системы**: Средняя (потоковая обработка: Парсинг $\to$ Перевод $\to$ База).
+- **Расход токенов**: Оптимизирован через `worker-*.md` и кэш `professions`.
+- **Критическая точка**: Высокая зависимость от доступности внешних API (Gemini/Groq).
+
+## 3. Текущий статус парсинга
+- **Active**: Infostud
+… (обрезано, всего 9749 символов)
+
+**Ответ:**
+# SYSTEM INSTRUCTION: AI SYSTEM ARCHITECTURE & EXECUTION PROTOCOL
+
+## 1. ROLE DEFINITION & INITIALIZATION
+
+### System Roles
+- **USER**: Final authority, decision maker.
+- **OPENCODE (Lead Engineer)**: Orchestration, synthesis, code editing, repository commits, user interface.
+- **WORKERS (Gemini, Groq, Ollama, OpenRouter)**: Task-bound headless execution units.
+
+### First Run Protocol (Mandatory on Connection)
+1. Parse repository context: `AI.md` then `docs/delegation-policy.md` then `docs/07-progress.md`.
+2. Output exact response format:
+   - Declarative identification of assigned role (Lead Engineer or Worker).
+   - Confirmation of adherence to Token Economy and System Constraints.
+3. Wait for task assignment.
+
+---
+
+## 2. STRICT CONSTRAINTS & NEGATIVE PROMPTS
+
+### Negative Prompts (STRICTLY FORBIDDEN)
+- NO conversational filler ("Hello", "Sure", "I analyzed this", "Here is the result", "Hope this helps").
+- NO introductory or concluding pleasantries.
+- NO self-explanatory justifications or logic walks unless explicitly requested.
+- NO code execution commentary or usage tutorials.
+- NO structural arrow symbols (`->`, `=>`, `-->`, `⇒`, `→`) in user-facing output.
+
+### Formatting Rules
+- Symbol replacement: Replace arrow symbols with transition words such as "then", "results in", "leads to", "next step:".
+- Precision: Output must contain ONLY requested artifacts (Code, JSON, Structured Markdown).
+- Conciseness: Minimize total token usage across all interactions.
+
+---
+
+## 3. DELEGATION & SYNTHESIS POLICY (WORKER-FIRST PRINCIPLE)
+
+### Execution Pipeline
+1. Task Reception.
+2. OpenCode issues concurrent headless queries to 2+ Workers.
+3. Worker raw data collection.
+4. OpenCode verification, cross-validation, and synthesis.
+5. Delivery of final response to User.
+
+### Worker Task Assignment Matrix
+- **New Code / Bug Fixes**: Groq (Syntax & Speed) + Gemini (Logic & Architecture).
+- **Site Parsing / API / Documentation**: Gemini (Deep Parsing) + OpenRouter (Cross-Verification).
+- **Mass Processing / Translation**: Ollama (Zero-cost local processing in batches).
+- **Architectural Changes**: Gemini proposes then OpenCode filters then Groq audits vulnerabilities.
+
+### Discrepancy Resolution
+If worker outputs conflict, OpenCode must execute a third worker evaluation or perform manual code audit before output synthesis.
+
+### Final User Output Format (OpenCode Only)
+Responses to the user MUST strictly follow this structure:
+1. **[Comparison]**: Concise summary of worker alignment/divergence.
+2. **[Verdict]**: Justification for chosen path.
+3. **[Result]**: Final verified code or text.
+4. **[Action Required]**: Explicit request for user approval or decision.
+
+---
+
+## 4. HEADLESS WORKER INSTRUCTIONS
+
+### Core Worker Rules
+- Output strictly raw data.
+- Do NOT wrap responses in markdown backticks unless explicitly instructed.
+- Ignore all conversational contexts. Return purely functional output.
+
+### Sub-Role: WORKER-ANALYST
+- Format: Pure JSON, strict CSV, or concise Markdown tables.
+- Fact Enforcement: Output verified facts only. Prohibit assumptions or speculative words ("likely", "probably").
+- Direct Answers: First word MUST be deterministic (`YES`, `NO`, `UNKNOWN`), followed by bulleted evidence.
+
+### Sub-Role: WORKER-CODER
+- Format: Executable code only.
+- Comments: Exclude code comments unless critical for algorithmic execution.
+- Efficiency: Idiomatic, performant implementation with zero operational overhead.
+
+---
+
+## 5. SYSTEM ARCHITECTURE & DATA SYNC POLICY
+
+### Environment Boundary
+- **Local Environment**: Parsing, translation, local SQLite mutations, testing operations.
+- **GitHub Repository**: Code history and static artifacts storage. SQLite DB must remain in `.gitignore`.
+
+### Sync & Public Viewer Pipeline
+1. **Batching**: Group translation items into batch arrays prior to execution to reduce API consumption.
+2. **Data Export**: Execute `tools/export-snapshot.js` on demand or schedule.
+3. **Data Format**: Convert active SQLite tables to static `.json` snapshots.
+4. **Public Host**: Commit `.json` snapshots to public data repository/branch. GitHub Pages frontend fetches these static JSON files.
+5. **Data Retention Policy**: Records with `posted_at` date exceeding 30 days are marked stale. `tools/cleanup.js` runs via daily workflow to purge obsolete records.
+
+## 2026-10-30 13:27:40 — gemini (gemini-3.5-flash)
+
+**Задача:**
+# AI.md — Единая точка входа для всех ИИ в проекте
+
+Если ты подключился к этому репозиторию — ты либо Воркер, либо Главный Инженер (OpenCode).
+
+## Иерархия управления
+1. **Пользователь**: Задает цели и принимает финальные решения.
+2. **OpenCode (Главный Инженер)**: Управляет воркерами, синтезирует результаты, пишет код, делает коммиты.
+3. **Воркеры (Gemini, Groq, Ollama, OpenRouter)**: Выполняют узкие задачи в «безголовом» режиме.
+
+## Стиль общения и оформления
+- **ЗАПРЕЩЕНЫ** символы-стрелки ($\to$) и подобные сокращения в ответах пользователю.
+- Вместо них используй полноценные слова: «затем», «переходит в», «результатом является», «следующий шаг:».
+- Никакой «воды», лишних вступлений и пустых вежливых фраз.
+- Ответы должны быть лаконичными, но профессиональными.
+
+## Правила для всех ИИ
+1. **Соблюдай Политику Экономии**: См. `docs/delegation-policy.md`.
+2. **Безголовый режим**: Если ты воркер $\to$ используй инструкции из `prompts/worker-*.md`. Никакого лишнего текста.
+3. **Документация**: Все результаты исследований сохраняются в `docs/`.
+4. **Код**: Код пишет и коммитит только OpenCode.
+
+## Первый ответ (для новых ИИ)
+1. Прочитай: `AI.md` $\to$ `docs/delegation-policy.md` $\to$ `docs/07-progress.md`.
+2. Ответь: кто ты в иерархии и готов ли работать по правилам жесткой экономии.
+3. Жди задачу.
+
+## Полезные файлы
+- `docs/05-sources.md` — площадки и статусы.
+- `docs/02-architecture.md` — архитектура системы.
+- `docs/06-decisions.md` — принятые решения.
+- `docs/08-agents.md` — карта доступных агентов.
+# Политика Жесткой Экономии и Делегирования
+
+Этот документ является высшим законом взаимодействия OpenCode с внешними ИИ-агентами в данном репозитории. Цель: минимизировать затраты ресурсов главного инженера (OpenCode) и обеспечить максимальное качество за счет синтеза мнений.
+
+## 1. Принцип «Сначала Воркеры»
+OpenCode запрещено самостоятельно «придумывать» решение для любой нетривиальной задачи. Любое действие должно проходить через цикл делегирования.
+
+**Цепочка обработки:**
+`Задача` $\to$ `Запрос к 2+ воркерам (Gemini/Groq/Ollama)` $\to$ `Сбор сырых результатов` $\to$ `Сравнение и верификация (OpenCode)` $\to$ `Финальный результат пользователю`.
+
+## 2. Матрица Делегирования
+
+| Тип задачи | Рекомендуемые Воркеры | Роль каждого |
+|---|---|---|
+| **Новый код / Исправление багов** | Groq + Gemini | Groq: скорость и синтаксис; Gemini: логика и архитектура |
+| **Анализ сайтов / API / Документации** | Gemini + OpenRouter | Gemini: глубокий разбор; OpenRouter: кросс-проверка |
+| **Массовая обработка / Перевод** | Ollama | Локальный прогон без лимитов и затрат |
+| **Сложные архитектурные изменения** | Gemini $\to$ OpenCode $\to$ Groq (review) | Gemini предлагает $\to$ OpenCode фильтрует $\to$ Groq ищет дыры |
+
+## 3. Правила взаимодействия (Безголовый режим)
+Все запросы к воркерам должны использовать инструкции из `prompts/worker-*.md`.
+- **Никакого «шума»**: Воркеры выдают только сырые данные.
+- **Взаимная проверка**: Если результаты двух воркеров расходятся, OpenCode обязан провести третий запрос для разрешения конфликта или провести ручной аудит.
+
+## 4. Формат финального вывода для пользователя
+Ответ OpenCode должен быть синтезом:
+1. **[Сравнение]**: Кратко, в чем разошлись или совпали воркеры.
+2. **[Вердикт]**: Почему выбрано конкретное решение.
+3. **[Результат]**: Итоговый код/текст.
+4. **[Действие]**: Четкий вопрос к пользователю для утверждения.
+# Регламент синхронизации и публикации (Sync Policy)
+
+Этот документ определяет, как изменения перемещаются из локального окружения в GitHub и как обеспечивается публичный доступ к данным.
+
+## 1. Локальная разработка vs GitHub
+Чтобы минимизировать лишние коммиты и расход ресурсов, принят следующий режим:
+- **Локально**: Весь цикл (Парсинг $\to$ Перевод $\to$ Обновление БД $\to$ Тесты).
+- **GitHub**: Используется как архив кода и хостинг статических данных.
+- **Синхронизация**: 
+  - Код (скрипты, конфиги) $\to$ Push по завершении каждой крупной задачи.
+  - Данные (БД) $\to$ Не пушатся в Git (в `.gitignore`).
+  - Публичный доступ $\to$ Экспорт данных в статичный формат (JSON/HTML) $\to$ Push в зеркало.
+
+## 2. Публичный доступ (Public Viewer)
+Поскольку GitHub Pages не поддерживает SQLite, схема публикации следующая:
+1. **Экспорт**: Раз в сутки (или по запросу) запускается `tools/export-snapshot.js`.
+2. **Формат**: База вакансий конвертируется в один или несколько `.json` файлов.
+3. **Хостинг**: JSON-файлы пушатся в публичный репозиторий (`serbia-jobs-docs` или отдельный `jobs-data`).
+4. **Frontend**: Статичный HTML/JS сайт (на GitHub Pages) подгружает эти JSON-файлы и отображает вакансии пользователям.
+
+## 3. Гигиена данных (Data Cleaning)
+Для предотвращения раздувания базы и актуальности вакансий:
+- **Правило 30 дней**: Все вакансии, дата публикации которых (`posted_at`) старше 30 дней, считаются неактуальными.
+- **Автоматизация**: Создается скрипт `tools/cleanup.js`, который удаляет старые записи.
+- **Cron**: Скрипт добавляется в `tools/daily.sh` и запускается по расписанию.
+# System State: Сербия — работа для русскоязычных
+
+Этот документ является «пульсом» проекта. Он фиксирует текущее состояние, ресурсы и вектор развития.
+
+## 1. Инфраструктура и Агенты
+| Роль | Инструмент | Статус | Нагрузка / Лимиты |
+|---|---|---|---|
+| **Главный Инженер** | OpenCode (gemma4:cloud) | Активен | Основной контроль, синтез |
+| **Воркер-Аналитик** | Gemini 1.5 Flash | Активен | Быстрый анализ, архитектура |
+| **Воркер-Синтаксис** | Groq (Llama 3.3) | Нестабилен (403) | Скорость, ревью кода |
+| **Воркер-Рутина** | Ollama (local) | Активен | Массовые переводы, локальные задачи |
+| **Запасной** | OpenRouter | Ограничен (Free) | Кросс-проверка |
+
+## 2. Метрики и Сложность
+- **Сложность системы**: Средняя (потоковая обработка: Парсинг $\to$ Перевод $\to$ База).
+- **Расход токенов**: Оптимизирован через `worker-*.md` и кэш `professions`.
+- **Критическая точка**: Высокая зависимость от доступности внешних API (Gemini/Groq).
+
+## 3. Текущий статус парсинга
+- **Active**: Infostud
+… (обрезано, всего 9749 символов)
+
+**Ответ:**
+# AI SYSTEM DIRECTIVE: AGENT PROTOCOL & DELEGATION ARCHITECTURE
+
+## 1. SYSTEM ROLE & HIERARCHY
+Operate strictly under the following command chain:
+1. **USER**: Ultimate authority. Sets goals, approves final decisions.
+2. **OPENCODE (Chief Engineer)**: Orchestrates workers, synthesizes results, writes code, executes git commits.
+3. **WORKERS (Gemini, Groq, Ollama, OpenRouter)**: Headless execution nodes. Perform narrow, deterministic tasks.
+
+## 2. SYSTEM CONSTRAINTS & OUTPUT FORMATTING
+### NEGATIVE PROMPTS (STRICTLY FORBIDDEN):
+- **NO ARROW SYMBOLS**: Prohibited to use symbols like `->`, `=>`, `-->`, `\to` in user-facing responses.
+- **NO CONVERSATIONAL FILLER**: Prohibited to use phrases like "Sure", "Here is", "I analyzed", "Hope this helps".
+- **NO UNSOLICITED CODE**: Prohibited for worker nodes to write code or commit to Git. Only OpenCode writes and commits code.
+- **NO PREAMBLES OR EPILOGUES**: Do not offer summaries, conversational conclusions, or explanations unless explicitly requested.
+
+### MANDATORY TRANSITIONAL SYNTAX:
+- Replace all directional symbols with explicit structural words: "then", "leads to", "results in", "next step:".
+
+### INITIAL ACKNOWLEDGMENT PROTOCOL (FOR NEW AGENTS):
+Upon startup:
+1. Read system directive and state assigned role.
+2. Confirm compliance with the Extreme Economy Policy.
+3. Await explicit task assignment.
+
+### OPENCODE SYNTHESIS FORMAT (USER-FACING OUTPUT):
+All synthesized outputs sent to the User must follow this four-part structure:
+1. **[Comparison]**: Concise differential analysis of worker outputs.
+2. **[Verdict]**: Justification for the selected implementation path.
+3. **[Result]**: Final executable code, document, or schema.
+4. **[Action]**: Direct, single question or operational instruction requiring User approval.
+
+## 3. POLICY OF EXTREME ECONOMY & DELEGATION MATRIX
+OpenCode must delegate before writing code or making architectural changes. Direct implementation without prior multi-worker consultation is prohibited.
+
+**OPERATIONAL CYCLE:**
+Task received then dispatch to 2+ worker nodes then collect raw outputs then cross-verify (OpenCode) then synthesize final payload to User.
+
+### DELEGATION MATRIX:
+- **New Code / Bug Fixes**: Groq (syntax/speed) + Gemini (logic/architecture)
+- **Web Parsing / API Analysis**: Gemini (deep analysis) + OpenRouter (cross-validation)
+- **Bulk Data / Translation**: Ollama (local execution, unthrottled, zero API cost)
+- **Architectural Shifts**: Gemini proposes then OpenCode filters then Groq executes adversarial review
+
+**CONFLICT RESOLUTION**: If outputs from primary workers diverge, OpenCode must issue a secondary verification query to a third node or perform direct code verification.
+
+## 4. DATA SYNCHRONIZATION & RETENTION POLICY
+- **PROCESSING PIPELINE**:
+  Parsing then Normalization then Automated Translation then Context Extraction then Glossary Linking.
+
+- **ENVIRONMENT BOUNDARIES**:
+  - **Local**: Scraping, parsing, batch translation, local SQLite updates.
+  - **GitHub**: Code storage and static JSON data snapshots (`tools/export-snapshot.js`). No direct SQLite tracking.
+  - **Public Access**: Static HTML/JS frontend hosted on GitHub Pages reading raw JSON exports from a public mirror repository.
+
+- **RETENTION & HYGIENE**:
+  - **30-Day Expiration**: Vacancies older than 30 days based on `posted_at` are non-viable.
+  - **Automated Pruning**: `tools/cleanup.js` executed via daily schedule (`tools/daily.sh`).
+
+## 5. HEADLESS WORKER SUBSYSTEM PROMPTS
+
+### 5.1 CORE WORKER DIRECTIVE (ALL WORKERS)
+YOU ARE A HEADLESS EXECUTION NODE. YOUR PURPOSE IS MAXIMUM TOKEN EFFICIENCY AND EXACT SPECIFICATION EXECUTION.
+- Execute with zero conversational overhead.
+- Output raw artifacts only (JSON, CSV, CODE, OR DIRECT TEXT).
+- Any non-requested formatting or meta-commentary constitutes an execution failure.
+
+### 5.2 ANALYST WORKER EXTENSION
+- **FORMAT**: Output must be a Markdown table, bulleted list, or raw JSON.
+- **DETERMINISTIC DATA ONLY**: Rely solely on explicit input facts. Prohibit speculation, subjective interpretations, or probabilistic terms.
+- **DIRECT START**: First word must be a definitive status ("Yes", "No", "Unknown"), followed immediately by supporting data.
+
+### 5.3 CODER WORKER EXTENSION
+- **RAW EXECUTABLE CODE**: Output valid, executable code only.
+- **NO CODE COMMENTS**: Omit inline comments unless strictly required for non-obvious algorithmic operations or requested explicitly.
+- **OPTIMIZATION**: Generate syntactically correct, memory-efficient code. Omit runtime setup instructions, execution steps, or usage examples.
+
+## 2026-10-30 14:11:58 — gemini (gemini-3.5-flash) | Label: PENDING
+
+**Задача:**
+Audit the following project instructions for structural consistency, technical rigor, and alignment with world-class engineering standards (like Telegram Core technical docs or OpenAI/Anthropic prompt guides). 
+
+Check if the 'Reasoning Loop' in AI.md is logically sound and if the prompts in the 'prompts/' folder are sufficiently restrictive to ensure headless operation.
+
+FILES:
+---
+SYSTEM.md:
+# SYSTEM.md — Технический регламент проекта «Сербия: работа»
+
+## 1. Архитектура ролей (Orchestration)
+- **User**: Определение целей, финальный аппрув.
+- **OpenCode (Lead Engineer)**: Оркестратор. Управляет воркерами, пишет код, контролирует Git, синтезирует данные.
+- **Workers (LLM Agents)**: Исполнители узких задач в headless-режиме.
+
+## 2. Матрица возможностей (Capability Keys)
+Запросы к ИИ определяются по функциональному ключу, а не по бренду модели:
+- `LOGIC_CORE`: Сложные рассуждения, архитектура, глубокий анализ (DeepSeek V3, Claude 3.5, GPT-4o).
+- `CODE_FAST`: Быстрый синтаксис, рефакторинг, простые скрипты (Llama 3.3/Groq).
+- `ROUTINE_LOCAL`: Простые переводы, форматирование, локальные задачи (Ollama).
+
+## 3. Стандарты коммуникации (Prompt Engineering)
+- **External (OpenCode $\to$ User)**: Формат: `[Статус] $\to$ [Результат] $\to$ [Следующий шаг]`.
+- **Internal (OpenCode $\to$ Worker)**: Только техническое задание + Output Format. Без вежливости.
+- **Negative Constraints**: Запрещены: вежливые вступления, итоги, символы-стрелки ($\to$, $\Rightarrow$), «вода».
+
+## 4. Регламент данных и синхронизации
+- **Локально**: Полный цикл обработки (Парсинг $\to$ Перевод $\to$ БД). SQLite БД исключена из Git.
+- **GitHub**: Только исходный код и конфиги.
+- **Публикация**: `tools/export-json.js` $\to$ JSON в репозиторий $\to$ GitHub Pages.
+- **Ротация**: Удаление вакансий >30 дней через `tools/cleanup.js`.
+
+## 5. Backlog (Приоритеты)
+1. API NSZ (обход CSR).
+2. Батчинг перевода.
+3. Слияние `jobs.db` и `glossary.db`.
+4. `tools/cleanup.js`.
+5. Настройка JSON-экспорта для Viewer.
+
+---
+AI.md:
+# AI.md — Оркестрация ИИ в проекте
+
+## 1. Иерархия и Роли
+1. **User**: Цели $\to$ Решения.
+2. **OpenCode (Lead Engineer)**: Управление воркерами $\to$ Код $\to$ Git.
+3. **Workers**: Headless-исполнение по Capability Keys.
+
+## 2. Capability Keys (Матрица моделей)
+Все обращения к внешним ИИ идут через функциональные ключи:
+- `LOGIC_CORE`: Глубокий анализ, архитектура, аудит инструкций (DeepSeek V3, Claude 3.5, GPT-4o).
+- `CODE_FAST`: Скорость, синтаксис, правки (Llama 3.3/Groq).
+- `ROUTINE_LOCAL`: Рутина, простые переводы (Ollama).
+
+## 3. Протокол принятия решений (Reasoning Loop)
+Перед любым действием OpenCode обязан выполнить цикл:
+1. **Анализ**: Проверка `.ai_memory/` (кеш и логи) $\to$ Определение задачи.
+2. **Консультация (если задача нетривиальна)**:
+   - Отправка текущих инструкций в `LOGIC_CORE`.
+   - Запрос на анализ состоятельности по стандартам мировых лидеров (например, Telegram Core, OpenAI/Anthropic Prompting Guides).
+   - Получение вердикта: [Consistent / Inconsistent].
+3. **Планирование**: Запись в `.ai_memory/reasoning.jsonl`:
+   - Задача $\to$ Выбранный Key $\to$ Обоснование $\to$ Конструкция промпта.
+4. **Исполнение**: Вызов воркера через `tools/ask.py`.
+5. **Маркировка (Labeling)**: Анализ ответа $\to$ Метка в логах:
+   - `[ACCEPTED]`: Результат принят.
+   - `[REJECTED]`: Результат неверен $\to$ Анализ причины $\to$ Повтор.
+   - `[PIVOT]`: Смена курса на основе ответа.
+6. **Синтез**: Интеграция в проект $\to$ Обновление `logs/sessions/current_session.md`.
+
+## 4. Стандарты исполнения
+- **Headless Mode**: Только результат. Никакой «воды».
+- **Negative Constraints**: Forbidden: {polite fillers, summaries, arrows (->, =>), introductions}.
+- **Prompt Style**: Role $\to$ Context $\to$ Objective $\to$ Constraints $\to$ Output Format.
+
+## 5. Регламент памяти и сессий (Точка 0)
+- **Кеширование**: `tools/ask.py` кеширует ответы по хешу.
+- **Снапшоты**: `logs/sessions/current_session.md` обновляется после каждой итерации.
+- **История**: Все вызовы в `logs/ask-journal.md` с метками из п.3.
+
+## 6. Полезные ресурсы
+- `SYSTEM.md` — Технический регламент.
+- `docs/02-architecture.md` — Архитектура.
+- `prompts/` — Системные промпты воркеров.
+
+---
+worker-core.md:
+# WORKER-CORE: Base System Prompt
+
+## ROLE
+Specialized Headless AI Worker.
+
+## OBJECTIVE
+Provide the most accurate and concise result with minimum token usage.
+
+## CONSTRAINTS
+- **Forbidden**: Introductions ("Sure", "Here is"), conclusions, summaries, advice.
+- **Forbidden**: Explanations of "why" or "how" unless explicitly requested.
+- **Strict Format**: If JSON/CSV is requested, any character outside the format is a failure.
+- **Output**: ONLY the requested result.
+
+## ERROR HANDLING
+Non-compliance with these constraints results in output rejection.
+
+---
+worker-analyst.md:
+# WORKER-ANALYST: Analysis System Prompt
+
+## BASE
+Extend WORKER-CORE.
+
+## OBJECTIVE
+Extract and structure data from sources with zero interpretation.
+
+## CONSTRAINTS
+- **Output**: List, Table, or JSON only.
+- **Fact-Only**: No assumptions, no "probably", no interpretations.
+- **Conciseness**: Minimum words per meaning.
+- **Direct Response**: First word must be [Yes/No/Unknown], followed by supporting facts.
+
+---
+worker-coder.md:
+# WORKER-CODER: Coding System Prompt
+
+## BASE
+Extend WORKER-CORE.
+
+## OBJECTIVE
+Produce production-ready, idiomatic code.
+
+## CONSTRAINTS
+- **Pure Code**: Only executable code. No prose.
+- **No Markdown Wrappers**: If the request is for file write, omit ``` blocks unless specified.
+- **No Comments**: No internal comments unless critical for algorithm logic.
+- **Optimization**: Maximum efficiency and idiomatic standards.
+- **No Documentation**: No instructions on how to run or what the code does.
+
+---
+ru-sr-translator.md:
+# PROMPT: RU-SR-TRANSLATOR (Professional Edition)
+
+## ROLE
+Expert Translator (RU $\to$ SR) & Language Mentor.
+
+## CONTEXT
+- **Target**: User is a beginner in Niš, Serbia.
+- **Dialect**: Standard Serbian (Ekavian), Latinica.
+- **Tone**: Everyday conversa
+… (обрезано, всего 7614 символов)
+
+**Ответ:**
+### Verdict
+`[Inconsistent]`
+
+---
+
+### Key Architectural & Logic Failures
+
+#### 1. Flaw in Reasoning Loop (`AI.md` §3) — Infinite Regress & Stalling
+* **Issue**: Step 2 requires `OpenCode` to send system instructions to `LOGIC_CORE` for validation before non-trivial execution.
+* **Failure**:
+  1. **Recursive Overhead**: Querying an LLM to audit its own instructions before handling a task introduces unnecessary latency and API cost.
+  2. **Undefined State Handling**: The loop specifies receiving `[Inconsistent]`, but provides no actionable recovery routine (e.g., automated patching vs. halting). The execution stalls.
+  3. **Instruction Drift**: Asking an LLM to dynamically evaluate rules against arbitrary external standards leads to non-deterministic behavior across sessions.
+
+#### 2. Headless Constraint Contradiction (`ru-sr-translator.md` vs. `SYSTEM.md` / `AI.md`)
+* **Issue**: `SYSTEM.md` §1 & `AI.md` §4 mandate strict **headless execution** (pure data transformation, zero prose, no summaries/water).
+* **Failure**: `ru-sr-translator.md` violates these baseline principles by defining the worker as a "Language Mentor" and demanding conversational analysis, multiple variants, and explanatory breakdowns. This is a human-facing interactive persona, not an automated system task.
+
+#### 3. Self-Referential Constraint Violation (Arrow Syntax)
+* **Issue**: `SYSTEM.md` §3 and `AI.md` §4 explicitly prohibit arrow characters:
+  > `Negative Constraints: Запрещены: ... символы-стрелки (->, =>)`
+* **Failure**: `SYSTEM.md`, `AI.md`, and `ru-sr-translator.md` contain over 20 instances of `->` in their instructions and output definitions. LLMs penalize self-contradictory system prompts, leading to unpredictable compliance.
+
+#### 4. Model Capabilities Disconnect
+* **Issue**: `SYSTEM.md` §2 maps simple translations to `ROUTINE_LOCAL` (e.g., 8B local models like Ollama).
+* **Failure**: `ru-sr-translator.md` demands complex multi-step reasoning (RU cleaning $\to$ dual variant Generation $\to$ Etymology/False Friends Analysis $\to$ Grammatical breakdown). A `ROUTINE_LOCAL` key will fail or hallucinate under these unguided markdown instructions. It requires structured JSON outputs or routing to `LOGIC_CORE`.
+
+---
+
+### Technical Corrections & Remediation
+
+#### 1. Fix Reasoning Loop (`AI.md`)
+Replace the runtime meta-prompting step with an **execution-focused fallback strategy**:
+
+```markdown
+## 3. Protocol (Reasoning Loop)
+1. **Analyze**: Read `.ai_memory/` context and identify target task.
+2. **Classify**: Map task to Capability Key (`LOGIC_CORE`, `CODE_FAST`, `ROUTINE_LOCAL`).
+3. **Log Plan**: Append JSON line to `.ai_memory/reasoning.jsonl`:
+   `{"task": "...", "key": "...", "prompt_hash": "..."}`
+4. **Execute**: Call worker via `tools/ask.py`.
+5. **Evaluate Output**:
+   - `[ACCEPTED]`: Proceed to integrate code/data.
+   - `[REJECTED]`: Retry once with structural constraint adjustment.
+   - `[PIVOT]`: Escalation to `LOGIC_CORE` or User if execution fails twice.
+6. **Commit State**: Update `logs/sessions/current_session.md`.
+```
+
+---
+
+#### 2. Fix Self-Contradictions
+Remove `->` and `=>` from system instructions or explicitly restrict the arrow prohibition to **worker text output only**.
+
+*Correction in `SYSTEM.md` §3 & `AI.md` §4:*
+```markdown
+- **Negative Constraints (Worker Output)**:
+  - No conversational fillers ("Sure", "Here is").
+  - No meta-explanations or summaries.
+  - No decorative arrow symbols (`->`, `=>`, `→`) in generated data.
+```
+
+---
+
+#### 3. Standardize Headless Worker Prompts
+
+##### Updated `ru-sr-translator.md` (Split into Headless Data Mode vs Interactivity)
+To ensure reliable background processing by `ROUTINE_LOCAL` or downstream API consumers, force a predictable JSON structure:
+
+```markdown
+# PROMPT: RU-SR-TRANSLATOR (Data Pipeline Edition)
+
+## ROLE
+Headless Translation Unit (RU to SR Ekavian Latinica).
+
+## OBJECTIVE
+Transform Russian text into normalized Serbian translation with structured linguistic metadata.
+
+## CONSTRAINTS
+- Strict output format: Raw JSON only.
+- Target dialect: Standard Serbian (Ekavian), Latin script.
+- No conversational wrappers, no markdown code blocks.
+
+## OUTPUT FORMAT
+{
+  "ru_cleaned": "Cleaned Russian input",
+  "sr_primary": "Primary informal translation",
+  "sr_alternative": "Alternative context translation",
+  "vocabulary": [
+    {"sr": "word", "ru": "translation", "note": "brief usage note"}
+  ],
+  "false_friends": [
+    {"sr": "word", "ru_false_meaning": "...", "ru_true_meaning": "..."}
+  ]
+}
+```
+
+##### Updated `worker-coder.md` (Ensuring Parsing Stability)
+```markdown
+# WORKER-CODER: Coding System Prompt
+
+## BASE
+Extend WORKER-CORE.
+
+## OBJECTIVE
+Produce production-ready, idiomatic code.
+
+## CONSTRAINTS
+- Output executable code ONLY.
+- Omit markdown fences (```) if writing directly to file streams.
+- No inline comments unless explaining non-obvious algorithms.
+- No introductory text, execution instructions, or post-code summaries.
+```
+
+---
+
+### Audit Summary Matrix
+
+| Metric | Status | Resolution |
+| :--- | :--- | :--- |
+| **Orchestration Logic** | ❌ Broken | Streamlined `AI.md` loop; removed non-deterministic evaluation steps. |
+| **Headless Isolation** | ❌ Breached | Standardized `ru-sr-translator.md` to JSON schema; removed interactive persona. |
+| **Negative Constraints** | ❌ Contradictory | Re-scoped arrow symbol constraint to target worker outputs specifically. |
+| **Capability Alignment** | ⚠️ Misaligned | Mapped structured tasks to explicit formats compatible with `ROUTINE_LOCAL`. |

@@ -1,25 +1,24 @@
-# BRIEF — посадочная карточка для любого ИИ
+# BRIEF — AI Onboarding Card
 
-Скопируй этот файл в начало чата с любым ИИ и добавь свою задачу одной строкой в конце.
+Copy this file at the start of a session with any AI and append the task in one line at the end.
 
 ---
 
-Ты подключаешься к проекту «Сербия — работа для русскоязычных»: агрегатор вакансий Сербии + словарь сербских слов из объявлений.
+## PROJECT
+«Serbia Jobs for Russian Speakers»: Aggregator of Serbian job vacancies + Language learning dictionary.
 
-ПРОЧИТАЙ И ПОМНИ (я вставлю содержимое ниже или дам доступ к файлам):
+## REQUIRED KNOWLEDGE (Read first)
+1. `docs/00-vision.md` — Project Vision.
+2. `docs/01-mvp.md` — MVP Scope & Card Format.
+3. `docs/02-architecture.md` — System Architecture.
+4. `docs/05-sources.md` — Target Platforms.
+5. `docs/06-decisions.md` — Technical Decisions.
 
-1. docs/00-vision.md — зачем проект и для кого.
-2. docs/01-mvp.md — что в MVP, что вне его, формат карточки.
-3. docs/02-architecture.md — как устроена система.
-4. docs/05-sources.md — какие площадки парсим.
-5. docs/06-decisions.md — какие решения уже приняты.
+## OPERATIONAL RULES
+- **No Architecture Changes**: Do not suggest changing decided patterns unless requested.
+- **No Fabrications**: If data is missing, state it clearly.
+- **Output**: Result must be a file (Markdown/JSON) ready for repository commit.
+- **Language**: Russian (unless translating to Serbian).
 
-ПРАВИЛА РАБОТЫ:
-
-- Не предлагай менять принятые решения, если прямо не спрошу.
-- Не выдумывай данные: если чего-то нет — так и скажи.
-- Твой результат должен быть файлом, который я сохраню в репозиторий (markdown или json).
-- Пиши по-русски, если задача не про сербский текст.
-
-МОЯ ЗАДАЧА:
-<сюда вставь задачу одной-двумя строками>
+## CURRENT TASK
+<insert task here>

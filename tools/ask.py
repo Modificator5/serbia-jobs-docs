@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Единая точка делегирования задач внешним ИИ.
+"""Единая точка делегирования задач внешним ИИ с локальным кешированием.
 
 Использование:
   tools/ask.py <провайдер> "промпт"
   echo "длинный промпт" | tools/ask.py <провайдер> -
 
-Провайдеры: gemini | ollama | openrouter | claude
-Ключи берутся из .env в корне репозитория (см. .env.example).
+Провайдеры: gemini | ollama | openrouter | claude | groq
+Ключи берутся из .env в корне репозитория.
 """
 import json
 import os
 import sys
 import time
+import hashlib
 import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+MEMORY_DIR = ROOT / ".ai_memory"
+MEMORY_DIR.mkdir(exist_ok=True)
 
 ENV_PATH = ROOT / ".env"
 if ENV_PATH.exists():
@@ -133,9 +136,7 @@ def ask_groq(prompt: str) -> str:
 
 def ask_claude(prompt: str) -> str:
     key = os.environ.get("ANTHROPIC_API_KEY") or die(
-        "нет ANTHROPIC_API_KEY в .env — Claude подключается позже "
-        "(console.anthropic.com → ключ → строка в .env); пока используй "
-        "gemini/ollama или ручной релей через prompts/START.md")
+        "нет ANTHROPIC_API_KEY в .env")
     model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5")
     url = "https://api.anthropic.com/v1/messages"
     payload = {
@@ -155,8 +156,7 @@ def ask_claude(prompt: str) -> str:
         die(f"неожиданный ответ Claude: {json.dumps(data)[:300]}")
 
 
-def journal(provider: str, prompt: str, answer: str) -> None:
-    """Ведёт лог вызовов: logs/ask-journal.md (виден на GitHub raw для слежения)."""
+def journal(provider: str, prompt: str, answer: str, label: str = "PENDING") -> None:
     logs_dir = ROOT / "logs"
     logs_dir.mkdir(exist_ok=True)
     path = logs_dir / "ask-journal.md"
@@ -166,34 +166,40 @@ def journal(provider: str, prompt: str, answer: str) -> None:
         "ollama": os.environ.get("OLLAMA_MODEL", "gemma4:cloud"),
         "openrouter": os.environ.get("OPENROUTER_MODEL", "free"),
         "claude": os.environ.get("CLAUDE_MODEL", "claude"),
+        "groq": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
     }.get(provider, provider)
     def clip(s: str, n: int = 6000) -> str:
         return s if len(s) <= n else s[:n] + f"\n… (обрезано, всего {len(s)} символов)"
     entry = (
-        f"\n## {now} — {provider} ({model})\n\n"
+        f"\n## {now} — {provider} ({model}) | Label: {label}\n\n"
         f"**Задача:**\n{clip(prompt)}\n\n**Ответ:**\n{clip(answer)}\n"
     )
     with path.open("a", encoding="utf-8") as f:
         f.write(entry)
 
 
-def ask_groq(prompt: str) -> str:
-    key = os.environ.get("GROQ_API_KEY") or die("нет GROQ_API_KEY в .env")
-    model = "llama-3.3-70b-versatile"
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {key}",
-    }
-    data = http_json(url, payload, headers)
-    try:
-        return data["choices"][0]["message"]["content"].strip()
-    except (KeyError, IndexError):
-        die(f"неожиданный ответ Groq: {json.dumps(data)[:300]}")
+def get_cached_answer(provider: str, prompt: str) -> str | None:
+    cache_file = MEMORY_DIR / f"{provider}.jsonl"
+    if not cache_file.exists():
+        return None
+    prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
+    with cache_file.open("r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+                if entry.get("hash") == prompt_hash:
+                    return entry.get("answer")
+            except json.JSONDecodeError:
+                continue
+    return None
+
+
+def save_to_cache(provider: str, prompt: str, answer: str) -> None:
+    cache_file = MEMORY_DIR / f"{provider}.jsonl"
+    prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
+    entry = json.dumps({"hash": prompt_hash, "prompt": prompt, "answer": answer}, ensure_ascii=False)
+    with cache_file.open("a", encoding="utf-8") as f:
+        f.write(entry + "\n")
 
 
 PROVIDERS = {
@@ -221,9 +227,28 @@ def main() -> None:
         die("пустой промпт (передай текстом или через stdin с '-')")
     if not prompt:
         die("пустой промпт")
-    answer = PROVIDERS[provider](prompt)
-    print(answer)
-    journal(provider, prompt, answer)
+
+    # check cache first
+    cached = get_cached_answer(provider, prompt)
+    if cached:
+        print(cached)
+        return
+
+    fallback_order = ["gemini", "openrouter", "groq", "ollama"]
+    if provider not in fallback_order:
+        fallback_order.insert(0, provider)
+
+    for p in fallback_order:
+        try:
+            answer = PROVIDERS[p](prompt)
+            print(answer)
+            save_to_cache(p, prompt, answer)
+            journal(p, prompt, answer)
+            return
+        except SystemExit as e:
+            if p == fallback_order[-1]:
+                raise e
+            continue
 
 
 if __name__ == "__main__":
