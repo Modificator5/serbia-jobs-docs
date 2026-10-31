@@ -53,8 +53,13 @@ def http_json(url: str, payload: dict, headers: dict, timeout: int = 120,
                 time.sleep(3 * (attempt + 1))
                 continue
             die(f"HTTP {e.code} от {url.split('/')[2]}: {body}")
-        except urllib.error.URLError as e:
-            die(f"сеть недоступна ({url.split('/')[2]}): {e.reason}")
+        except (urllib.error.URLError, TimeoutError) as e:
+            reason = getattr(e, "reason", e)
+            if attempt < retries - 1:
+                last_err = f"сеть: {reason} (повтор {attempt + 1}/{retries})"
+                time.sleep(3 * (attempt + 1))
+                continue
+            die(f"сеть недоступна ({url.split('/')[2]}): {reason}")
     die(last_err or "исчерпаны повторы")
 
 
@@ -234,21 +239,20 @@ def main() -> None:
         print(cached)
         return
 
-    fallback_order = ["gemini", "openrouter", "groq", "ollama"]
-    if provider not in fallback_order:
-        fallback_order.insert(0, provider)
-
+    fallback_order = [provider] + [
+        p for p in ("gemini", "openrouter", "groq", "ollama") if p != provider
+    ]
+    last_error = None
     for p in fallback_order:
         try:
             answer = PROVIDERS[p](prompt)
             print(answer)
-            save_to_cache(p, prompt, answer)
-            journal(p, prompt, answer)
+            save_to_cache(provider, prompt, answer)
+            journal(p, prompt, answer, "ACCEPTED")
             return
         except SystemExit as e:
-            if p == fallback_order[-1]:
-                raise e
-            continue
+            last_error = e
+    raise last_error or SystemExit(2)
 
 
 if __name__ == "__main__":

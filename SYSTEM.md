@@ -23,8 +23,8 @@
 - **Ротация**: Удаление вакансий >30 дней через `tools/cleanup.js`.
 
 ## 5. Backlog (Приоритеты)
-1. API NSZ (обход CSR).
-2. Батчинг перевода.
-3. Слияние `jobs.db` и `glossary.db`.
-4. `tools/cleanup.js`.
-5. Настройка JSON-экспорта для Viewer.
+1. Telegram-публикация карточек.
+2. Новые источники: Poslovi.rs, Oglasi.rs, Lako do posla.
+3. NLP-фильтр и локальная лемматизация.
+4. Расширение авто-тестов на парсеры.
+5. Ротация `logs/ask-journal.md`.

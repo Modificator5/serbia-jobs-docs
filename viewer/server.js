@@ -5,23 +5,22 @@ const { DatabaseSync } = require("node:sqlite");
 
 const PORT = process.env.PORT || 7788;
 const DB_PATH = process.env.JOBS_DB || path.join(__dirname, "..", "data", "jobs.db");
-const HTML = path.join(__dirname, "index.html");
+const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
 function getJobs() {
   if (!fs.existsSync(DB_PATH)) return [];
   const db = new DatabaseSync(DB_PATH, { readOnly: true });
-  const jobs = db
-    .prepare(
+  try {
+    return db.prepare(
       `SELECT id, source, source_url, title_sr, title_ru, city, salary_raw,
               salary_min, salary_max, requirements_short, company_short,
               snippet, category_tag, posted_at, is_published
        FROM jobs
        ORDER BY posted_at DESC NULLS LAST, parsed_at DESC`
-    )
-    .all();
-  const profs = db.prepare("SELECT title_sr, title_ru FROM professions").all();
-  db.close();
-  return { jobs, profs };
+    ).all();
+  } finally {
+    db.close();
+  }
 }
 
 const server = http.createServer((req, res) => {
@@ -36,8 +35,13 @@ const server = http.createServer((req, res) => {
     }
     return;
   }
-  res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-  res.end(fs.readFileSync(HTML));
+  if (url.pathname === "/" || url.pathname === "/index.html") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    res.end(HTML);
+    return;
+  }
+  res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+  res.end("Not found");
 });
 
 server.listen(PORT, () => {

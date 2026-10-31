@@ -6,22 +6,13 @@
 // (только на странице вакансии — экономим, не заходим).
 // Запуск: node scrapers/helloworld.js [страниц=3]
 
-const { execFileSync } = require("node:child_process");
-const { openDb, upsertJob, categoryTag, parseDateDMY, DB_PATH } = require("./db");
+const { openDb, categoryTag } = require("./db");
+const { fetchHtml, saveJobs, report } = require("./common");
 
 const BASE = "https://www.helloworld.rs";
 const LISTING = `${BASE}/oglasi-za-posao/stranica/`;
-const UA = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0";
+const HEADERS = { accept: "text/html,application/xhtml+xml" };
 const PAGES = parseInt(process.argv[2] || "3", 10);
-
-function fetchHtml(url) {
-  return execFileSync("curl", [
-    "-sL", "-m", "30",
-    "-H", `user-agent: ${UA}`,
-    "-H", "accept: text/html,application/xhtml+xml",
-    url,
-  ], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 });
-}
 
 function parsePage(html) {
   const jobs = [];
@@ -65,38 +56,31 @@ function parsePage(html) {
   return jobs;
 }
 
-function main() {
+async function main() {
   const db = openDb();
-  console.log(`DB: ${DB_PATH}`);
-  let saved = 0;
-  let failed = 0;
+  const stats = { saved: 0, skipped: 0, failed: 0 };
 
   for (let page = 1; page <= PAGES; page++) {
     const url = page === 1 ? `${BASE}/oglasi-za-posao/` : `${LISTING}${page}`;
-    const html = fetchHtml(url);
+    const html = fetchHtml(url, HEADERS);
     const jobs = parsePage(html);
     if (!jobs.length) {
       console.log(`page ${page}: пусто (bytes=${html.length}) — стоп`);
       break;
     }
-    for (const job of jobs) {
-      try {
-        if (upsertJob(db, job)) saved++;
-      } catch (e) {
-        failed++;
-        console.error(`skip ${job.id}: ${e.message}`);
-      }
-    }
+    const pageStats = saveJobs(db, jobs);
+    stats.saved += pageStats.saved;
+    stats.skipped += pageStats.skipped;
+    stats.failed += pageStats.failed;
     console.log(`page ${page}: ${jobs.length} jobs`);
-    // пауза 800 мс — правило режима выживания
-    const end = Date.now() + 800;
-    while (Date.now() < end) { /* busy wait to keep sync main simple */ }
+    await new Promise((r) => setTimeout(r, 800));
   }
 
-  const count = db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n;
-  const hwCount = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE source = 'helloworld'").get().n;
-  console.log(`Done. Saved: ${saved}, failed: ${failed}, hw in db: ${hwCount}, total: ${count}`);
+  report(db, "helloworld", stats);
   db.close();
 }
 
-main();
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

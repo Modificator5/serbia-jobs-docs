@@ -6,33 +6,12 @@
 
 const { DatabaseSync } = require("node:sqlite");
 const path = require("node:path");
-const { execFileSync } = require("node:child_process");
+const { ask, parseJson } = require("./ai");
 
 const ROOT = path.join(__dirname, "..");
 const DB_PATH = process.env.JOBS_DB || path.join(ROOT, "data", "jobs.db");
-const ASK = path.join(ROOT, "tools", "ask.py");
 const PROVIDER = process.argv[2] || "ollama";
 const BATCH = parseInt(process.argv[3] || "70", 10);
-
-function ask(prompt) {
-  return execFileSync("python3", [ASK, PROVIDER, "-"], {
-    input: prompt,
-    encoding: "utf8",
-    maxBuffer: 8 * 1024 * 1024,
-    timeout: 300000,
-  });
-}
-
-function parseJsonMap(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1) return null;
-  try {
-    return JSON.parse(text.slice(start, end + 1));
-  } catch {
-    return null;
-  }
-}
 
 function main() {
   const db = new DatabaseSync(DB_PATH);
@@ -73,7 +52,7 @@ function main() {
       batch.map((t) => JSON.stringify(t)).join("\n");
     let map = null;
     try {
-      map = parseJsonMap(ask(prompt));
+      map = parseJson(ask(prompt, PROVIDER));
     } catch (e) {
       console.error(`пачка ${i / BATCH + 1}: ошибка воркера: ${e.message.slice(0, 120)}`);
     }

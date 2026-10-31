@@ -3,6 +3,29 @@ const path = require("path");
 
 const DB_PATH = process.env.JOBS_DB || path.join(__dirname, "..", "data", "jobs.db");
 
+const HTML_ENTITIES = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+function decodeHtml(value) {
+  if (value == null) return value;
+  return String(value)
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(parseInt(code, 10)))
+    .replace(/&([a-z]+);/gi, (m, name) => HTML_ENTITIES[name.toLowerCase()] ?? m);
+}
+
+function cleanText(value) {
+  if (value == null) return null;
+  const text = decodeHtml(String(value)).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return text || null;
+}
+
 const CATEGORY_MAP = [
   ["ugostiteljstv", "ugostiteljstvo"],
   ["kuvar", "ugostiteljstvo"],
@@ -62,7 +85,6 @@ const CATEGORY_MAP = [
   ["čuvanj", "njega"],
   ["cuvanj", "njega"],
   ["negovatelj", "njega"],
-  ["negovatelj", "njega"],
   ["dadilj", "njega"],
 ];
 
@@ -95,6 +117,11 @@ function parseDateDMY(s) {
 
 function openDb() {
   const db = new DatabaseSync(DB_PATH);
+  db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000;
+    PRAGMA foreign_keys = ON;
+  `);
   db.exec(`
     CREATE TABLE IF NOT EXISTS jobs (
       id TEXT PRIMARY KEY,
@@ -172,8 +199,17 @@ function isAbroadJob(job) {
 }
 
 function upsertJob(db, job) {
-  if (isAbroadJob(job)) return false;
-  const { salary_min, salary_max } = parseSalary(job.salary_raw);
+  const normalized = {
+    ...job,
+    title_sr: cleanText(job.title_sr) || "",
+    city: cleanText(job.city),
+    salary_raw: cleanText(job.salary_raw),
+    requirements_short: cleanText(job.requirements_short),
+    company_short: cleanText(job.company_short),
+    snippet: cleanText(job.snippet),
+  };
+  if (isAbroadJob(normalized)) return false;
+  const { salary_min, salary_max } = parseSalary(normalized.salary_raw);
   db.prepare(
     `INSERT INTO jobs
       (id, source, source_url, title_sr, title_ru, city, salary_raw, salary_min, salary_max,
@@ -192,22 +228,32 @@ function upsertJob(db, job) {
        posted_at=excluded.posted_at,
        parsed_at=excluded.parsed_at`
   ).run(
-    job.id,
-    job.source,
-    job.source_url,
-    job.title_sr,
-    job.city,
-    job.salary_raw,
+    normalized.id,
+    normalized.source,
+    normalized.source_url,
+    normalized.title_sr,
+    normalized.city,
+    normalized.salary_raw,
     salary_min,
     salary_max,
-    job.requirements_short,
-    job.company_short,
-    job.snippet || null,
-    job.category_tag,
-    job.posted_at,
-    job.parsed_at
+    normalized.requirements_short,
+    normalized.company_short,
+    normalized.snippet,
+    normalized.category_tag,
+    normalized.posted_at,
+    normalized.parsed_at
   );
   return true;
 }
 
-module.exports = { openDb, upsertJob, parseSalary, categoryTag, parseDateDMY, isAbroadJob, DB_PATH };
+module.exports = {
+  openDb,
+  upsertJob,
+  parseSalary,
+  categoryTag,
+  parseDateDMY,
+  isAbroadJob,
+  decodeHtml,
+  cleanText,
+  DB_PATH,
+};

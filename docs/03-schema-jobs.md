@@ -5,7 +5,7 @@
 ```sql
 CREATE TABLE jobs (
   id              TEXT PRIMARY KEY,          -- nanoid
-  source          TEXT NOT NULL,             -- 'infostud' | 'kupujemprodajem' | 'jooble' | ...
+  source          TEXT NOT NULL,             -- 'infostud' | 'kupujemprodajem' | 'halooglasi' | 'helloworld'
   source_url      TEXT NOT NULL UNIQUE,      -- ссылка на оригинал
   title_sr        TEXT NOT NULL,             -- должность на сербском
   title_ru        TEXT,                      -- перевод (из professions или вручную)
@@ -38,12 +38,27 @@ CREATE TABLE professions (
 
 Заполняется вручную и через Ollama; используется для единообразия title_ru.
 
-## Таблица categories — теги
+## Таблица glossary — словарь
 
 ```sql
-CREATE TABLE categories (
-  tag      TEXT PRIMARY KEY,   -- 'ugostiteljstvo'
-  name_ru  TEXT                -- 'HoReCa / рестораны'
+CREATE TABLE glossary_categories (
+  id    INTEGER PRIMARY KEY AUTOINCREMENT,
+  name  TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE glossary (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  category_id  INTEGER REFERENCES glossary_categories(id),
+  term         TEXT UNIQUE NOT NULL,
+  definition   TEXT,
+  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE job_words (
+  job_url       TEXT NOT NULL,
+  word_id       INTEGER NOT NULL,
+  context_snippet TEXT,
+  PRIMARY KEY (job_url, word_id)
 );
 ```
 

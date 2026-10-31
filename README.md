@@ -1,35 +1,55 @@
 # Сербия — работа для русскоязычных
 
-Агрегатор вакансий Сербии $\to$ Единая База (SQLite) $\to$ Telegram-канал + Интерактивный Словарь.
+Агрегатор вакансий Сербии -> единая база SQLite -> Telegram + интерактивный словарь.
 
-## 🎯 Суть проекта
-Система автоматически собирает вакансии с сербских площадок, переводит их и извлекает полезные слова/фразы для изучения языка. Конечный результат — структурированный поток вакансий в Telegram и база знаний для релоканта.
+## Технический стек
 
-## 🛠 Технический стек
-- **Backend**: Node.js, SQLite (Единая БД для вакансий и глоссаря).
-- **AI-Pipeline**: Делегирование задач внешним LLM (Gemini, Groq, Ollama) через `tools/ask.py`.
-- **Viewer**: Web-интерфейс для фильтрации и просмотра базы.
+- **Node.js >= 22.5** (встроенный `node:sqlite`, без npm-зависимостей).
+- **SQLite**: `data/jobs.db` — вакансии и глоссарий.
+- **AI-слой**: `tools/ask.py` (Gemini, OpenRouter, Groq, Ollama, Claude).
+- **Публичный сайт**: корневые `index.html` + `jobs.json` (GitHub Pages).
 
-## 📊 Статус источников
+## Источники
+
 | Площадка | Статус | Особенности |
 |---|---|---|
-| **Infostud** | ✅ Active | Основной источник |
-| **KupujemProdajem** | ✅ Active | Масс-маркет, физ. работа |
-| **HaloOglasi** | ✅ Active | Классифайд |
-| **NSZ** | ❌ Discarded | CSR/Client-side rendering (слишком сложно) |
-| **Новые (в очереди)** | 🔍 Research | HelloWorld, Poslovi.rs, Oglasi.rs и др. |
+| **Infostud** | Active | Основной источник, есть зарплаты |
+| **KupujemProdajem** | Active | Масс-маркет, физическая работа |
+| **HaloOglasi** | Active | Классифайд, без дат в листинге |
+| **HelloWorld** | Active | IT-вакансии |
+| **NSZ** | Discarded | CSR, парсер удалён |
+| **Jooble** | Discarded | Cloudflare challenge |
 
-## 🚀 Быстрый старт (Команды)
-- `npm run scrape:infostud` — запуск парсера Infostud.
-- `npm run scrape:kp` — запуск парсера KupujemProdajem.
-- `npm run scrape:ho` — запуск парсера HaloOglasi.
-- `npm run translate` — пакетный перевод должностей.
-- `npm run viewer` — запуск веб-интерфейса.
-- `bash tools/daily.sh` — полный цикл (сбор $\to$ перевод $\to$ бэкап).
+## Команды
 
-## 📂 Карта проекта
-- `docs/` — Архитектура, Политику Экономии, Трекер Прогресса.
-- `scrapers/` — Модули сбора данных.
-- `tools/` — Инструменты делегирования ИИ и импорта.
-- `viewer/` — Веб-интерфейс.
-- `data/` — Локальные базы данных (не в git).
+```bash
+npm run check             # проверка хелперов, jobs.json и синхронизации с БД
+npm run scrape:infostud   # сбор вакансий Infostud
+npm run scrape:kp         # сбор вакансий KupujemProdajem
+npm run scrape:ho         # сбор вакансий HaloOglasi
+npm run scrape:hw         # сбор вакансий HelloWorld
+npm run translate         # перевод должностей (ollama по умолчанию)
+npm run enrich            # перевод + извлечение терминов в глоссарий
+npm run import:glossary   # импорт docs/glossary/bazaznanja.txt
+npm run cleanup           # удаление вакансий старше 30 дней
+npm run export:snapshot   # CSV-снимок в snapshots/jobs.csv
+npm run export:json       # публичный jobs.json для сайта
+npm run viewer            # локальный просмотр: http://localhost:7788
+```
+
+Полный цикл: `bash tools/daily.sh`.
+
+## Структура
+
+- `scrapers/` — парсеры и общие утилиты (`common.js`, `db.js`).
+- `tools/` — импорт, перевод, очистка, экспорт, AI-мост.
+- `viewer/` — локальный HTTP-сервер (использует корневой `index.html`).
+- `docs/` — архитектура, источники, решения, прогресс.
+- `prompts/` — системные промпты воркеров.
+- `data/`, `.env` — локальные данные и секреты, в git не попадают.
+
+## Публикация
+
+`npm run export:json` перезаписывает корневой `jobs.json`. Корневой `index.html`
+работает и с локальным API (`npm run viewer`), и со статическим `jobs.json` на
+GitHub Pages. Подробнее: `docs/howto-publish.md`.

@@ -3,7 +3,8 @@
 // Запуск: node scrapers/infostud.js [страниц=2]
 // Режим выживания: по умолчанию 2 свежие страницы; полный: укажи больше.
 
-const { openDb, upsertJob, categoryTag, parseDateDMY, DB_PATH } = require("./db");
+const { openDb, categoryTag, parseDateDMY } = require("./db");
+const { saveJobs, report } = require("./common");
 
 const BASE = "https://poslovi.infostud.com";
 const LISTING = `${BASE}/oglasi-za-posao?page=`;
@@ -44,6 +45,7 @@ function mapJob(job) {
 async function fetchPage(page) {
   const res = await fetch(`${LISTING}${page}`, {
     headers: { "user-agent": UA, accept: "text/html" },
+    signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for page ${page}`);
   const html = await res.text();
@@ -58,28 +60,20 @@ async function fetchPage(page) {
 
 async function main() {
   const db = openDb();
-  console.log(`DB: ${DB_PATH}`);
-  let inserted = 0;
-  let failed = 0;
+  const stats = { saved: 0, skipped: 0, failed: 0 };
 
   for (let page = 1; page <= PAGES; page++) {
     const { jobs, total } = await fetchPage(page);
     if (page === 1) console.log(`Total listings: ${total}`);
-    for (const job of jobs) {
-      try {
-        upsertJob(db, mapJob(job));
-        inserted++;
-      } catch (e) {
-        failed++;
-        console.error(`skip ${job?.id}: ${e.message}`);
-      }
-    }
+    const pageStats = saveJobs(db, jobs.map(mapJob));
+    stats.saved += pageStats.saved;
+    stats.skipped += pageStats.skipped;
+    stats.failed += pageStats.failed;
     console.log(`page ${page}: ${jobs.length} jobs`);
-    await new Promise((r) => setTimeout(r, 700)); // пауза между страницами
+    await new Promise((r) => setTimeout(r, 700));
   }
 
-  const count = db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n;
-  console.log(`Done. Processed: ${inserted}, failed: ${failed}, total in db: ${count}`);
+  report(db, "infostud", stats);
   db.close();
 }
 

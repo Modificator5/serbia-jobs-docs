@@ -1,17 +1,26 @@
 {
   "name": "serbia-jobs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Агрегатор вакансий Сербии + словарь сербских слов для русскоязычных",
+  "engines": {
+    "node": ">=22.5"
+  },
   "scripts": {
+    "runAll": "npm run scrape && npm run scrape:infostud && npm run scrape:kp && npm run scrape:ho && npm run scrape:hw && npm run translate && npm run enrich && npm run 'import:glossary' && npm run export:snapshot && npm run export:json && npm run check && npm run viewer",
     "scrape": "node scrapers/infostud.js",
     "scrape:infostud": "node scrapers/infostud.js",
     "scrape:kp": "node scrapers/kupujemprodajem.js",
     "scrape:ho": "node scrapers/halooglasi.js",
-    "scrape:nsz": "node scrapers/nsz.js",
+    "scrape:hw": "node scrapers/helloworld.js",
     "translate": "node tools/translate-titles.js",
+    "enrich": "node tools/batch-enrich.js",
     "import:glossary": "node tools/import-glossary.js",
     "export:snapshot": "node tools/export-csv.js",
-    "viewer": "node viewer/server.js"
+    "export:json": "node tools/export-json.js",
+    "cleanup": "node tools/cleanup.js",
+    "viewer": "node viewer/server.js",
+    "check": "node tools/check.js",
+    "test": "node tools/check.js"
   }
 }

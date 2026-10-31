@@ -5,7 +5,8 @@
 // Режим выживания: по умолчанию только свежие страницы; полный прогон: [страниц=20]
 // Разведка: docs/sources/kupujemprodajem.md
 
-const { openDb, upsertJob, categoryTag, DB_PATH } = require("./db");
+const { openDb, categoryTag } = require("./db");
+const { saveJobs, report } = require("./common");
 
 const BASE = "https://www.kupujemprodajem.com";
 const CATEGORY_ID = 2546;
@@ -74,6 +75,7 @@ function mapAd(ad) {
 async function fetchPage(page) {
   const res = await fetch(`${LISTING}${page}`, {
     headers: { "user-agent": UA, accept: "text/html" },
+    signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for page ${page}`);
   const html = await res.text();
@@ -85,10 +87,8 @@ async function fetchPage(page) {
 
 async function main() {
   const db = openDb();
-  console.log(`DB: ${DB_PATH}`);
-  let saved = 0;
+  const stats = { saved: 0, skipped: 0, failed: 0 };
   let noise = 0;
-  let failed = 0;
 
   for (let page = 1; page <= PAGES; page++) {
     const ads = await fetchPage(page);
@@ -96,32 +96,24 @@ async function main() {
       console.log(`page ${page}: пусто — стоп`);
       break;
     }
+    const jobs = [];
     for (const ad of ads) {
       const title = (ad.name_decoded || ad.name || "").trim();
       if (isNoise(title)) {
         noise++;
         continue;
       }
-      try {
-        upsertJob(db, mapAd(ad));
-        saved++;
-      } catch (e) {
-        failed++;
-        console.error(`skip kp-${ad.ad_id}: ${e.message}`);
-      }
+      jobs.push(mapAd(ad));
     }
+    const pageStats = saveJobs(db, jobs);
+    stats.saved += pageStats.saved;
+    stats.skipped += pageStats.skipped;
+    stats.failed += pageStats.failed;
     console.log(`page ${page}: ${ads.length} ads, мусор: ${noise}`);
-    await new Promise((r) => setTimeout(r, 800)); // пауза между страницами
+    await new Promise((r) => setTimeout(r, 800));
   }
 
-  const count = db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n;
-  const kpCount = db
-    .prepare("SELECT COUNT(*) AS n FROM jobs WHERE source = 'kupujemprodajem'")
-    .get().n;
-  console.log(
-    `Done. Saved: ${saved}, noise filtered: ${noise}, failed: ${failed}, ` +
-    `kp in db: ${kpCount}, total in db: ${count}`
-  );
+  report(db, "kupujemprodajem", stats);
   db.close();
 }
 
