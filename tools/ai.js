@@ -29,4 +29,24 @@ function parseJson(text) {
   }
 }
 
-module.exports = { ask, parseJson };
+// Воркер должен вернуть строгий JSON. Допускаем два вида:
+//   1) конверт {"status":"success","data":...} (стандарт WORKER-ROUTINE),
+//   2) «сырой» JSON (объект/массив) — обратная совместимость со старыми промптами.
+function normalizeWorkerJson(text) {
+  const parsed = parseJson(text);
+  if (parsed === null) throw new Error("worker: ответ не является JSON");
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed) &&
+      Object.prototype.hasOwnProperty.call(parsed, "status")) {
+    const status = String(parsed.status).toLowerCase();
+    if (status !== "success") {
+      throw new Error(`worker: status=${parsed.status}${parsed.message ? ` (${parsed.message})` : ""}`);
+    }
+    if (!Object.prototype.hasOwnProperty.call(parsed, "data")) {
+      throw new Error("worker: конверт без поля data");
+    }
+    return parsed.data;
+  }
+  return parsed;
+}
+
+module.exports = { ask, parseJson, normalizeWorkerJson };

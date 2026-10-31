@@ -6,7 +6,7 @@
 
 const { DatabaseSync } = require("node:sqlite");
 const path = require("node:path");
-const { ask, parseJson } = require("./ai");
+const { ask, normalizeWorkerJson } = require("./ai");
 
 const ROOT = path.join(__dirname, "..");
 const DB_PATH = process.env.JOBS_DB || path.join(ROOT, "data", "jobs.db");
@@ -47,7 +47,7 @@ function main() {
   console.log(`К переводу: ${pending.length} (провайдер: ${PROVIDER}, пачка: ${BATCH})`);
 
   const insProf = db.prepare(
-    "INSERT OR REPLACE INTO professions (title_sr, title_ru) VALUES (?, ?)"
+    "INSERT OR IGNORE INTO professions (title_sr, title_ru) VALUES (?, ?)"
   );
   const updJob = db.prepare(
     "UPDATE jobs SET title_ru = ? WHERE title_sr = ? AND (title_ru IS NULL OR title_ru = '')"
@@ -63,7 +63,7 @@ function main() {
       batch.map((t) => JSON.stringify(t)).join("\n");
     let map = null;
     try {
-      map = parseJson(ask(prompt, PROVIDER));
+      map = normalizeWorkerJson(ask(prompt, PROVIDER));
     } catch (e) {
       console.error(`пачка ${i / BATCH + 1}: ошибка воркера: ${e.message.slice(0, 120)}`);
     }

@@ -193,7 +193,23 @@ const ABROAD_NEEDLES = [
   "u sloveniji", "u hrvatskoj", "u bosni", "u mađarskoj", "u madjarskoj",
 ];
 
+// Названия стран/регионов, которые в поле city означают вакансию за границей.
+// Отдельный список нужен потому, что площадки пишут «Kipar - Svi gradovi»,
+// «Nemačka» и т.п. без предлога — прежние иглы такие не ловили.
+const ABROAD_PLACES = [
+  "kipar", "nemačka", "nemacka", "njemačka", "njemacka", "austrija",
+  "švajcarska", "svajcarska", "bugarska", "rumunija", "makedonija",
+  "crna gora", "švedska", "svedska", "norveška", "norveska", "katar",
+  "emirati", "belgija", "holandija", "nizozemska", "finska", "danska",
+  "irska", "španija", "spanija", "francuska", "turska", "grčka", "grcka",
+  "slovenija", "hrvatska", "bosna", "mađarska", "madjarska", "italija",
+  "poljska", "češka", "ceska", "slovačka", "slovacka", "kanada",
+  "amerika", "velika britanija", "engleska", "malta", "luksemburg",
+];
+
 function isAbroadJob(job) {
+  const city = (job.city || "").toLowerCase();
+  if (ABROAD_PLACES.some((p) => city.includes(p))) return true;
   const s = `${job.title_sr || ""} ${job.city || ""} ${job.snippet || ""}`.toLowerCase();
   return ABROAD_NEEDLES.some((n) => s.includes(n));
 }

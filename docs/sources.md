@@ -15,11 +15,13 @@
 
 | Площадка | URL | Заметки |
 |---|---|---|
-| Poslovi.rs | poslovi.rs | категории, офферы; назван бэктестом |
+| Poslovi.rs | poslovi.rs | SSR-листинг `item-block` → `/job/<slug>/<id>`; поля: h4 заголовок, h5 компания, city, «Rok za apliciranje» (срок подачи, НЕ дата публикации → posted_at=null). В выдаче есть зарубежные («Kipar - Svi gradovi»). Пагинация не проверена; robots разрешает листинг |
+| Oglasi.rs | oglasi.rs | robots: `Disallow: /oglasi?q=*`, `/oglasi?o=*` (query-фильтры запрещены); разделы `/posao/<slug>`. Структура карточек не проверена |
+| Lako do posla | lakodoposla.com | robots: `Disallow: /*?` (любые query запрещены), есть sitemap; структура не проверена |
 | MojOglas | mojoglas.rs | классифайды |
 | Joberty | joberty.rs | IT + отзывы о компаниях |
-| Lako do posla | lakodoposla.com | кадровый агрегатор; назван бэктестом |
-| Oglasi.rs | oglasi.rs | доска объявлений, раздел posao |
+
+Статус: `research` — парсеры не реализованы (см. `docs/decisions.md`, 2026-10-31).
 
 ## Отложено
 

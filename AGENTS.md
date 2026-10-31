@@ -79,13 +79,18 @@ npm run verify                       # doctor + tests + docs:check
 
 ## 6. Мультиагенты
 
-| Ключ | Назначение | Кто |
-|---|---|---|
-| `ROUTINE_LOCAL` | переводы, батчи, форматирование | Ollama (локально) |
-| `CODE_FAST` | синтаксис, рефакторинг, ревью | Groq / Llama |
-| `LOGIC_CORE` | архитектура, глубокий анализ, спорные решения | Gemini (+ второй воркер на консенсус) |
+| Ключ | Назначение | Кто | Файл инструкции |
+|---|---|---|---|
+| `ROUTINE_LOCAL` | переводы, батчи, форматирование | Ollama (локально) | `prompts/worker-routine.md` |
+| `CODE_FAST` | синтаксис, рефакторинг, ревью | Groq / Llama | `prompts/worker-coder.md` |
+| `LOGIC_CORE` | архитектура, глубокий анализ, спорные решения | Gemini (+ второй воркер на консенсус) | `prompts/worker-logic.md` |
 
-Все вызовы через `tools/ask.py <провайдер> <промпт>` (кеш + fallback + журнал).
+Все вызовы через `tools/ask.py <провайдер> <промпт>` (кеш + fallback + журнал
+с ротацией > 1 МБ). Запрос = `prompts/worker-core.md` + один ролевой файл.
+Стандарт ответа воркера-рутины — JSON-конверт `{"status":"success","data":...}`
+(нормализуется в `tools/ai.js`). Нарушение формата = синтаксическая ошибка:
+один повтор, затем fallback. Внешний ответ пользователю — 4 блока
+`[Сравнение] [Вердикт] [Результат] [Действие]` (`prompts/lead-engineer.md`).
 Мозг (OpenCode/внешний ИИ) синтезирует и принимает решение — код пишет только тот,
 у кого есть доступ к файлам. Протокол: `docs/agents.md`.
 
@@ -100,13 +105,17 @@ npm run verify                       # doctor + tests + docs:check
 ## 8. Карта проекта
 
 - `scrapers/` — парсеры (по одному на площадку) + `common.js`, `db.js`
-- `tools/` — экспорт, перевод, обогащение, очистка, `ask.py`, `memory.js`, `doctor.js`
+- `tools/` — экспорт, перевод, обогащение, очистка, Telegram, `ask.py`, `memory.js`,
+  `doctor.js`, `docs-check.js`
+- `tests/` — офлайн-тесты парсеров на фикстурах (`parsers.test.js`)
 - `viewer/server.js` + `index.html` — локальный сайт (127.0.0.1:7788)
 - `docs/` — канонические документы (см. `docs/README.md`)
-- `prompts/` — промпты воркеров (`worker-core.md` реально используется)
+- `prompts/` — инструкции: `lead-engineer.md`, `worker-core.md` + ролевые
+  (`worker-logic.md`, `worker-coder.md`, `worker-routine.md`)
 - `memory/tasks.jsonl` — индекс задач с тегами (память)
 - `logs/` — журналы (локально, в git не входят)
 - `data/jobs.db` — единственный источник правды по вакансиям (локально)
+- `.github/workflows/verify.yml` — CI: `npm run verify` на push/PR
 
 Полезное: `README.md` (команды), `docs/README.md` (индекс документов),
 `docs/progress.md` (текущее состояние), `SYSTEM.md` (регламент).

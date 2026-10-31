@@ -2,12 +2,16 @@
 
 Агрегатор вакансий Сербии -> единая база SQLite -> Telegram + интерактивный словарь.
 
+Правила проекта (для людей и ИИ): [`AGENTS.md`](AGENTS.md) — конституция.
+Индекс документов: [`docs/README.md`](docs/README.md).
+
 ## Технический стек
 
 - **Node.js >= 22.5** (встроенный `node:sqlite`, без npm-зависимостей).
-- **SQLite**: `data/jobs.db` — вакансии и глоссарий.
+- **SQLite**: `data/jobs.db` — вакансии, `professions` (кеш переводов) и глоссарий.
 - **AI-слой**: `tools/ask.py` (Gemini, OpenRouter, Groq, Ollama, Claude).
-- **Публичный сайт**: корневые `index.html` + `jobs.json` (GitHub Pages).
+- **Витрина**: Telegram-канал (`tools/publish-telegram.js`); локальный сайт
+  (`viewer`, 127.0.0.1:7788) и статический `jobs.json` для GitHub Pages.
 
 ## Источники
 
@@ -19,37 +23,38 @@
 | **HelloWorld** | Active | IT-вакансии |
 | **NSZ** | Discarded | CSR, парсер удалён |
 | **Jooble** | Discarded | Cloudflare challenge |
+| Poslovi.rs / Oglasi.rs / Lako do posla | Research | см. `docs/sources.md` |
 
 ## Команды
 
 ```bash
-npm run check             # проверка хелперов, jobs.json и синхронизации с БД
-npm run scrape:infostud   # сбор вакансий Infostud
-npm run scrape:kp         # сбор вакансий KupujemProdajem
-npm run scrape:ho         # сбор вакансий HaloOglasi
-npm run scrape:hw         # сбор вакансий HelloWorld
-npm run translate         # перевод должностей (ollama по умолчанию)
-npm run enrich            # перевод + извлечение терминов в глоссарий
+npm run verify            # doctor + тесты (хелперы+парсеры) + docs:check
+npm run runAll            # полный цикл = bash tools/daily.sh (лог в logs/)
+npm run scrape:infostud   # сбор вакансий (infostud/kp/ho/hw)
+npm run translate         # перевод должностей через кеш professions
+npm run enrich            # перевод + термины → glossary/job_words
 npm run import:glossary   # импорт docs/glossary/bazaznanja.txt
-npm run cleanup           # удаление вакансий старше 30 дней
-npm run export:snapshot   # CSV-снимок в snapshots/jobs.csv
-npm run export:json       # публичный jobs.json для сайта
-npm run viewer            # локальный просмотр: http://localhost:7788
+npm run cleanup           # удаление вакансий, невиденных > 30 дней
+npm run export:snapshot   # CSV-снимок snapshots/jobs.csv
+npm run export:json       # публичный jobs.json
+npm run viewer            # локальный просмотр: http://127.0.0.1:7788
+npm run publish:telegram  # публикация карточек (DRY без токена; --dry)
 ```
-
-Полный цикл: `bash tools/daily.sh`.
 
 ## Структура
 
 - `scrapers/` — парсеры и общие утилиты (`common.js`, `db.js`).
-- `tools/` — импорт, перевод, очистка, экспорт, AI-мост.
+- `tools/` — импорт, перевод, очистка, экспорт, Telegram, AI-мост, диагностика.
+- `tests/` — офлайн-тесты парсеров на фикстурах.
 - `viewer/` — локальный HTTP-сервер (использует корневой `index.html`).
-- `docs/` — архитектура, источники, решения, прогресс.
-- `prompts/` — системные промпты воркеров.
-- `data/`, `.env` — локальные данные и секреты, в git не попадают.
+- `docs/` — архитектура, источники, решения, операции, прогресс.
+- `prompts/` — инструкции воркеров и оркестратора.
+- `memory/` — индекс задач с тегами (в git).
+- `data/`, `.env`, `logs/`, `snapshots/`, `jobs.json` — локально, в git не входят.
 
-## Публикация
+## CI и публикация
 
-`npm run export:json` перезаписывает корневой `jobs.json`. Корневой `index.html`
-работает и с локальным API (`npm run viewer`), и со статическим `jobs.json` на
-GitHub Pages. Подробнее: `docs/howto-publish.md`.
+`.github/workflows/verify.yml` запускает `npm run verify` на каждый push/PR.
+Публикация карточек: `npm run publish:telegram` (нужны `TELEGRAM_BOT_TOKEN` и
+`TELEGRAM_CHANNEL_ID` в `.env`; без них — dry-run). Подробнее:
+`docs/operations.md`.

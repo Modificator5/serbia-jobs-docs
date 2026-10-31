@@ -22,15 +22,15 @@ Infostud / KP / HaloOglasi / HelloWorld
             data/jobs.db
         jobs + professions + glossary
                   │
-        ┌─────────┴─────────┐
-        ▼                   ▼
-  tools/export-json.js   tools/export-csv.js
-        │                   │
-        ▼                   ▼
-     jobs.json          snapshots/jobs.csv
+        ┌─────────┼──────────────┐
+        ▼         ▼              ▼
+ export-json  export-csv   publish-telegram
+        │         │              │
+        ▼         ▼              ▼
+    jobs.json  snapshots/    Telegram-канал
         │
         ▼
- index.html (GitHub Pages) + viewer/server.js (127.0.0.1:7788)
+ index.html (Pages) + viewer/server.js (127.0.0.1:7788)
 ```
 
 ## Принципы
@@ -40,7 +40,15 @@ Infostud / KP / HaloOglasi / HelloWorld
 3. **Парсеры изолированы.** Каждая площадка — отдельный модуль; общее — `scrapers/common.js`, нормализация — `scrapers/db.js` (чистка HTML, зарплаты, даты, фильтр зарубежных вакансий, `normalizePostedAt` — даты в будущем отбрасываются).
 4. **last_seen, не posted_at.** Актуальность вакансии определяется давностью последнего показа в листинге (`parsed_at` обновляется при каждом показе); `cleanup` удаляет только невиденные дольше 30 дней.
 5. **Один фронтенд.** Корневой `index.html` работает с локальным API и статическим `jobs.json`; viewer слушает только `127.0.0.1`.
-6. **Данные в git не попадают.** В репозитории — код, docs, prompts, memory. `data/`, `logs/`, `snapshots/`, `jobs.json`, `.env`, `.ai_memory/` — локально.
+6. **Данные в git не попадают.** В репозитории — код, docs, prompts, tests, memory. `data/`, `logs/`, `snapshots/`, `jobs.json`, `.env`, `.ai_memory/` — локально.
+7. **Витрина: Telegram первичен.** Карточки публикуются `tools/publish-telegram.js`
+   (пометка `is_published`, dry-run без токена). GitHub Pages — вторичный канал:
+   `jobs.json` не в git, статический деплой включается отдельно (decision 2026-10-31).
+8. **Слой воркеров.** `tools/ask.py` + `prompts/worker-core.md` + ролевой файл;
+   рутина возвращает конверт `{"status":"success","data":...}`, нормализуемый
+   `tools/ai.js`. Формат нарушен = синтаксическая ошибка (один повтор, затем fallback).
+9. **Офлайн-тесты.** `tests/parsers.test.js` проверяет парсеры на фикстурах без
+   сети; `tools/check.js` — хелперы и синхронность артефактов; CI — `npm run verify`.
 
 ## Схема jobs.db (кратко)
 

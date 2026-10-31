@@ -46,7 +46,33 @@ refactor: `common.js`, `check.js`, `cleanup.js`, `ai.js`, единый `index.ht
 - [x] Память задач с тегами
 - [x] Критические баги P0 (upsert/даты/cleanup/ask.py/пайплайн)
 - [x] Канонизация docs
-- [ ] GitHub Actions: verify на каждый push (CI)
-- [ ] Тесты парсеров по фикстурам (без сети)
-- [ ] Telegram-публикация карточек
-- [ ] Новые источники: Poslovi.rs, Oglasi.rs, Lako do posla
+- [x] GitHub Actions: verify на каждый push (CI)
+- [x] Тесты парсеров по фикстурам (без сети)
+- [x] Telegram-публикация карточек (инструмент; нужен токен/канал)
+- [ ] Новые источники: Poslovi.rs, Oglasi.rs, Lako do posla (разведка сделана)
+
+## 2026-10-31 (вторая сессия) — инструкции, CI, Telegram, ревизия
+
+Сделано:
+- **Инструкции**: `worker-core` + роли `worker-logic`/`worker-coder`/`worker-routine`,
+  `lead-engineer` (4 блока внешнего ответа); `SYSTEM.md` — указатель на `AGENTS.md`;
+  конверт воркера нормализуется `tools/ai.js`; `worker-analyst.md` удалён как
+  противоречивый (требовал “First word Yes/No” при JSON-задачах).
+- **doctor**: исправлен ложный FAIL по `memory/` (по конституции — в git);
+  CI-режим: отсутствие локальной БД/артефактов — warning.
+- **check**: работает без `jobs.json`/БД (CI); добавлены тесты `isAbroadJob`.
+- **Тесты**: `tests/parsers.test.js` — офлайн-фикстуры Infostud/KP/Halo/HelloWorld
+  (parse-функции экспортированы, `main` под `require.main === module`).
+- **CI**: `.github/workflows/verify.yml`.
+- **Telegram**: `tools/publish-telegram.js` (канон карточки, `is_published`,
+  dry-run, 429-retry), `.env.example`, docs.
+- **ask.py**: ротация `logs/ask-journal.md` (>1 МБ → `logs/archive/`).
+- **Фильтр зарубежных**: страны/регионы в поле `city` (Kipar, Nemačka, ...).
+- **Источники**: разведка poslovi.rs/oglasi.rs/lakodoposla (robots, структура,
+  ловушки) → `docs/sources.md`, решение — только research.
+- **Доки**: README, operations, architecture, agents, decisions, SYSTEM, BRIEF/START.
+
+Сверка с изначальной концепцией: агрегатор + словарь + Telegram — ядро сохранено;
+Telegram был в MVP, но до сих пор отсутствовал (теперь инструмент есть); глоссарий
+перенесён из отдельной базы в единую `jobs.db`; Jooble/NSZ отброшены, добавлены
+HaloOglasi/HelloWorld; публичная витрина сместилась с GitHub Pages на Telegram.

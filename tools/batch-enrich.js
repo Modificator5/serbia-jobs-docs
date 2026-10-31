@@ -2,17 +2,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { openDb } = require("../scrapers/db");
-const { ask, parseJson } = require("./ai");
+const { ask, normalizeWorkerJson } = require("./ai");
 
 const PROVIDER = process.argv[2] || "ollama";
 const BATCH_SIZE = parseInt(process.argv[3] || "20", 10);
 
 function buildPrompt(pending) {
   const core = fs.readFileSync(path.join(__dirname, "../prompts/worker-core.md"), "utf8");
-  const analyst = fs.readFileSync(path.join(__dirname, "../prompts/worker-analyst.md"), "utf8");
-  return `${core}\n${analyst}\n
-Правило «First word must be [Yes/No/Unknown]» из WORKER-ANALYST здесь отменяется:
-ответ — строго JSON-массив, первая и последняя скобки, без текста вокруг.
+  const routine = fs.readFileSync(path.join(__dirname, "../prompts/worker-routine.md"), "utf8");
+  return `${core}\n${routine}\n
+Обязательный формат — конверт WORKER-ROUTINE:
+{"status":"success","data":[ ... ]}
+Только minified JSON, без markdown, без текста вокруг.
 
 Задача: Обработай список вакансий.
 Для каждой вакансии:
@@ -27,13 +28,13 @@ ${JSON.stringify(pending, null, 2)}
 --- КОНЕЦ ДАННЫХ ---
 
 Формат ответа (строго JSON, без markdown):
-[
+{"status":"success","data":[
   {
     "id": "id_вакансии",
     "title_ru": "перевод",
     "terms": [{"term": "слово", "definition": "определение"}]
   }
-]`;
+]}`;
 }
 
 function main() {
@@ -50,7 +51,7 @@ function main() {
     }
 
     console.log(`Processing batch of ${pending.length} vacancies (${PROVIDER})...`);
-    const results = parseJson(ask(buildPrompt(pending), PROVIDER));
+    const results = normalizeWorkerJson(ask(buildPrompt(pending), PROVIDER));
     if (!Array.isArray(results)) {
       throw new Error("AI returned invalid JSON");
     }

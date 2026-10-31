@@ -77,7 +77,11 @@ async function main() {
   db.close();
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
+
+module.exports = { extractNextData, requirementsShort, mapJob };

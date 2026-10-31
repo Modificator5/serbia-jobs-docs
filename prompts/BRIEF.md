@@ -1,24 +1,28 @@
-# BRIEF — AI Onboarding Card
+# BRIEF — карточка онбординга для внешнего ИИ
 
-Copy this file at the start of a session with any AI and append the task in one line at the end.
+Скопируй этот файл в начало сессии и допиши задачу одной строкой в конце.
+Главный документ проекта — `AGENTS.md` (при противоречии побеждает он).
 
 ---
 
 ## PROJECT
-«Serbia Jobs for Russian Speakers»: Aggregator of Serbian job vacancies + Language learning dictionary.
+«Serbia Jobs for Russian Speakers»: агрегатор вакансий Сербии + словарь сербского
+языка из реальных объявлений. Итог — компактные карточки (Telegram) и словарь.
 
-## REQUIRED KNOWLEDGE (Read first)
-1. `docs/00-vision.md` — Project Vision.
-2. `docs/01-mvp.md` — MVP Scope & Card Format.
-3. `docs/02-architecture.md` — System Architecture.
-4. `docs/05-sources.md` — Target Platforms.
-5. `docs/06-decisions.md` — Technical Decisions.
+## REQUIRED KNOWLEDGE (читать по порядку)
+1. `AGENTS.md` — конституция: правила, память, git, экономия токенов, DoD.
+2. `docs/architecture.md` — конвейер, схема БД, карточка, ограничения.
+3. `docs/sources.md` — площадки и их статусы.
+4. `docs/decisions.md` — журнал решений (ADR).
+5. `docs/operations.md` — команды, CI, публикация, git.
+6. `docs/agents.md` — воркеры, матрица, протокол; `prompts/lead-engineer.md`.
 
 ## OPERATIONAL RULES
-- **No Architecture Changes**: Do not suggest changing decided patterns unless requested.
-- **No Fabrications**: If data is missing, state it clearly.
-- **Output**: Result must be a file (Markdown/JSON) ready for repository commit.
-- **Language**: Russian (unless translating to Serbian).
+- Без изменения архитектуры: не предлагай ломать принятые решения без запроса.
+- Без выдумок: нет данных — так и скажи.
+- Результат — файл (Markdown/JSON), готовый к коммиту.
+- Язык — русский (если не перевод на сербский).
+- Память: сначала `node tools/memory.js search "<термин>"`, потом решай.
 
 ## CURRENT TASK
 <insert task here>

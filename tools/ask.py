@@ -185,10 +185,33 @@ def prompt_hash(provider: str, prompt: str) -> str:
     return hashlib.sha256(f"{provider}|{MODEL_OF[provider]()}|{prompt}".encode()).hexdigest()
 
 
+MAX_JOURNAL_BYTES = 1_000_000
+
+
+def rotate_journal(path: Path) -> None:
+    """Ротация: журнал растёт медленно, но бесконечно. При превышении лимита
+    переносим его в logs/archive/ask-journal-YYYY-MM.md (без потери истории)."""
+    try:
+        if path.stat().st_size < MAX_JOURNAL_BYTES:
+            return
+    except FileNotFoundError:
+        return
+    archive = path.parent / "archive"
+    archive.mkdir(exist_ok=True)
+    stamp = datetime.now().strftime("%Y-%m")
+    dest = archive / f"ask-journal-{stamp}.md"
+    n = 1
+    while dest.exists():
+        dest = archive / f"ask-journal-{stamp}-{n}.md"
+        n += 1
+    path.replace(dest)
+
+
 def journal(provider: str, prompt: str, answer: str, label: str = "PENDING") -> None:
     logs_dir = ROOT / "logs"
     logs_dir.mkdir(exist_ok=True)
     path = logs_dir / "ask-journal.md"
+    rotate_journal(path)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     model = MODEL_OF.get(provider, lambda: provider)()
     def clip(s: str, n: int = 6000) -> str:

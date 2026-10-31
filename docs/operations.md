@@ -1,10 +1,10 @@
-# Операции: запуск, пайплайн, публикация, git
+# Операции: запуск, пайплайн, публикация, git, CI
 
 ## Команды
 
 ```bash
-npm run verify          # doctor + тесты + docs:check (зелёный — перед любой задачей)
-npm run runAll          # полный дневной цикл = bash tools/daily.sh (лог: logs/daily-YYYY-MM-DD.log)
+npm run verify          # doctor + тесты (хелперы+парсеры) + docs:check
+npm run runAll          # полный дневной цикл = bash tools/daily.sh (logs/daily-YYYY-MM-DD.log)
 npm run scrape:kp       # точечный скрейп (kp / infostud / ho / hw)
 npm run translate       # перевод новых title_sr через кеш professions (ollama)
 npm run enrich          # батч-обогащение: перевод + термины → glossary/job_words
@@ -12,6 +12,7 @@ npm run cleanup         # удалить вакансии, невиденные 
 npm run export:csv      # снимок snapshots/jobs.csv (бэкап + тесты без сети)
 npm run export:json     # публичный jobs.json
 npm run viewer          # локальный сайт http://127.0.0.1:7788
+npm run publish:telegram -- [N] [--dry]   # Telegram-публикация карточек
 node tools/memory.js search "запрос [тег]"   # память задач
 ./tools/ask.py <gemini|groq|ollama|openrouter|claude> "промпт"   # воркеры
 ```
@@ -22,26 +23,45 @@ node tools/memory.js search "запрос [тег]"   # память задач
 Cron (ночь): `bash tools/daily.sh` — flock не даст запуститься дважды; код возврата
 отражает упавшие шаги. Сырой прогон всех источников: редкое событие по явной команде.
 
+## Тесты и CI
+
+- `npm test` — хелперы нормализации + офлайн-фикстуры всех парсеров
+  (`tests/parsers.test.js`, без сети) + конверт воркера; артефакты (jobs.json/БД)
+  проверяются, только если есть локально.
+- `npm run verify` — doctor + тесты + docs:check; в CI отсутствие локальной БД и
+  артефактов — warning, не ошибка.
+- CI: `.github/workflows/verify.yml` на push/PR (Node 22, без зависимостей).
+
+## Публикация карточек (Telegram)
+
+1. `@BotFather` → `/newbot`; добавить бота админом в канал.
+2. В `.env`: `TELEGRAM_BOT_TOKEN=...`, `TELEGRAM_CHANNEL_ID=-100...`.
+3. `npm run publish:telegram -- 5` — отправляет до 5 новых (`is_published=0`),
+   помечает отправленные, уважает `retry_after` при 429.
+4. Без токена/канала или с `--dry` — только печать (без сети и без пометок).
+5. Автоматической публикации в `daily.sh` нет — канал пишется только явной командой.
+
 ## Очистка данных
 
-Правило 30 дней по **last_seen**: вакансия считается неактуальной, если её не
-показывали в листингах 30 дней (`parsed_at` — момент последнего показа).
-`posted_at` — вспомогательное поле (дата публикации); даты из будущего → NULL.
-Запуск входит в `daily.sh`; вручную: `node tools/cleanup.js [дней]`.
+Правило 30 дней по **last_seen**: вакансия неактуальна, если её не показывали в
+листингах 30 дней (`parsed_at` — момент последнего показа). `posted_at` —
+вспомогательное поле; даты из будущего → NULL. Запуск входит в `daily.sh`;
+вручную: `node tools/cleanup.js [дней]`.
 
 ## Публикация сайта (GitHub Pages)
 
-`jobs.json` (корень) + `index.html` — статическая витрина; `index.html` сначала
-пробует локальный `/api/jobs`, затем `jobs.json`. Включение Pages: Settings →
-Pages → Deploy from branch → `main` / root. Данные обновляются `export:json` +
-push `jobs.json` (в git входит только по явному решению — сейчас исключён).
-Локальный viewer слушает **только 127.0.0.1** (в сеть не светится).
+`index.html` сначала пробует локальный `/api/jobs`, затем `jobs.json`. `jobs.json`
+генерируется локально и **не входит в git** (решение 2026-10-31): GitHub Pages
+не обновляется автоматически. Для статической витрины нужен отдельный деплой
+(коммит артефакта в ветку Pages или CI-шаг с БД) — пока витрина вторична,
+основная — Telegram. Локальный viewer слушает только `127.0.0.1`.
 
 ## Git
 
 - `origin` = приватный `Modificator5/serbia-jobs` — единственный push по умолчанию.
 - `mirror` = публичное `serbia-jobs-docs` — пушить только по явной задаче.
-- В git входят: код, docs, prompts, `memory/`, `tools/`, `viewer/`, `index.html`.
+- В git входят: код, docs, prompts, `tests/`, `memory/`, `tools/`, `viewer/`,
+  `index.html`, `.github/`.
 - В git **не входят**: `data/`, `logs/`, `snapshots/`, `jobs.json`, `.env`,
   `.ai_memory/`, `*.db*`. Только явные пути (`git add <файлы>`), никогда `git add -A`.
 - Коммит после каждой завершённой задачи; структурные изменения — обновить
@@ -52,8 +72,15 @@ push `jobs.json` (в git входит только по явному решен�
 - БД — локально (`data/jobs.db`, WAL). CSV-снимок `snapshots/jobs.csv` — ручной бэкап.
 - `.env` — только локально, шаблон `.env.example` в git.
 
+## Журналы
+
+- `logs/ask-journal.md` — вызовы воркеров; при > 1 МБ ротируется в
+  `logs/archive/ask-journal-YYYY-MM.md` (без потери истории).
+- `logs/daily-*.log` — пошаговый лог дневного цикла.
+
 ## Troubleshooting
 
 - `daily.sh уже запущен` — второй экземпляр, подождать или снять `logs/.daily.lock`.
 - `doctor FAIL` — смотреть пункт проверки; секреты в git чинить немедленно.
 - Сбой площадки: точечный скрейп, `check` после; лог daily — `logs/daily-*.log`.
+- Telegram `403/400` — бот не админ канала или неверный `TELEGRAM_CHANNEL_ID`.
