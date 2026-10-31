@@ -26,8 +26,10 @@ function parsePage(html) {
 
     const company = (b.match(/__ga4_job_company[^>]*>([\s\S]*?)<\/a>/) || [])[1];
     const loc = (b.match(/la-map-marker[\s\S]*?<p class="text-sm font-semibold">([^<]+)<\/p>/) || [])[1];
-    const date = (b.match(/(\d{2})\.(\d{2})\.(\d{4})\.?/) || []);
 
+    // Дата в листинге — рядом с иконкой часов и часто в БУДУЩЕМ (срок действия
+    // вакансии, не публикации; проверено 2026-10-31: до 2026-11-29).
+    // Не парсим: posted_at оставляем NULL, cleanup использует parsed_at.
     let city = null;
     let format = null;
     if (loc) {
@@ -49,7 +51,7 @@ function parsePage(html) {
         const t = categoryTag(title);
         return t === "drugo" ? "it" : t;
       })(),
-      posted_at: date[3] ? `${date[3]}-${date[2]}-${date[1]}` : null,
+      posted_at: null,
       parsed_at: new Date().toISOString(),
     });
   }

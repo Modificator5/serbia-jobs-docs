@@ -25,7 +25,7 @@ function getJobs() {
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  if (url.pathname === "/api/jobs") {
+  if (url.pathname === "/api/jobs" || url.pathname === "/jobs.json") {
     try {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(getJobs()));
@@ -44,6 +44,8 @@ const server = http.createServer((req, res) => {
   res.end("Not found");
 });
 
-server.listen(PORT, () => {
-  console.log(`Просмотрщик вакансий: http://localhost:${PORT}`);
+// Только loopback: локальная витрина не должна светиться в сеть.
+const HOST = "127.0.0.1";
+server.listen(PORT, HOST, () => {
+  console.log(`Просмотрщик вакансий: http://${HOST}:${PORT}`);
 });

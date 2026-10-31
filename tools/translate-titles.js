@@ -20,6 +20,17 @@ function main() {
     title_ru TEXT NOT NULL
   )`);
 
+  // Backfill: вакансия могла быть удалена и спарсена заново (cleanup/repost),
+  // а перевод уже есть в кеше professions — подтягиваем без обращения к ИИ.
+  const backfilled = db.prepare(`
+    UPDATE jobs SET title_ru = (
+      SELECT p.title_ru FROM professions p WHERE p.title_sr = jobs.title_sr
+    )
+    WHERE (title_ru IS NULL OR title_ru = '')
+      AND EXISTS (SELECT 1 FROM professions p WHERE p.title_sr = jobs.title_sr)
+  `).run().changes;
+  if (backfilled) console.log(`Backfill из professions: +${backfilled}`);
+
   const pending = db.prepare(`
     SELECT DISTINCT j.title_sr FROM jobs j
     LEFT JOIN professions p ON p.title_sr = j.title_sr
@@ -56,9 +67,9 @@ function main() {
     } catch (e) {
       console.error(`пачка ${i / BATCH + 1}: ошибка воркера: ${e.message.slice(0, 120)}`);
     }
-    if (!map) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) {
       failed += batch.length;
-      console.error(`пачка ${i / BATCH + 1}: не распознан JSON — пропущена`);
+      console.error(`пачка ${i / BATCH + 1}: не распознан JSON-объект — пропущена`);
       continue;
     }
     db.exec("BEGIN");

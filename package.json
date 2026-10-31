@@ -7,7 +7,7 @@
     "node": ">=22.5"
   },
   "scripts": {
-    "runAll": "npm run scrape && npm run scrape:infostud && npm run scrape:kp && npm run scrape:ho && npm run scrape:hw && npm run translate && npm run enrich && npm run 'import:glossary' && npm run export:snapshot && npm run export:json && npm run check && npm run viewer",
+    "runAll": "bash tools/daily.sh",
     "scrape": "node scrapers/infostud.js",
     "scrape:infostud": "node scrapers/infostud.js",
     "scrape:kp": "node scrapers/kupujemprodajem.js",
@@ -21,6 +21,9 @@
     "cleanup": "node tools/cleanup.js",
     "viewer": "node viewer/server.js",
     "check": "node tools/check.js",
-    "test": "node tools/check.js"
+    "test": "node tools/check.js",
+    "doctor": "node tools/doctor.js",
+    "docs:check": "node tools/docs-check.js",
+    "verify": "node tools/doctor.js && node tools/check.js && node tools/docs-check.js"
   }
 }

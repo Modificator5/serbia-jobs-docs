@@ -198,6 +198,15 @@ function isAbroadJob(job) {
   return ABROAD_NEEDLES.some((n) => s.includes(n));
 }
 
+// Дата из будущего (репосты/ошибки парсинга) не должна попадать в posted_at:
+// иначе cleanup и сортировка ведут себя непредсказуемо.
+function normalizePostedAt(s) {
+  if (!s) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (s > today) return null;
+  return s;
+}
+
 function upsertJob(db, job) {
   const normalized = {
     ...job,
@@ -207,41 +216,54 @@ function upsertJob(db, job) {
     requirements_short: cleanText(job.requirements_short),
     company_short: cleanText(job.company_short),
     snippet: cleanText(job.snippet),
+    category_tag: job.category_tag || null,
+    posted_at: normalizePostedAt(job.posted_at),
   };
   if (isAbroadJob(normalized)) return false;
   const { salary_min, salary_max } = parseSalary(normalized.salary_raw);
+
+  // Ищем по id и по source_url: URL у объявления может смениться (слаг/город),
+  // а id остается. При смене title_sr прежний перевод невалиден — перечитываем
+  // из кеша professions, иначе помечаем NULL для повторного перевода.
+  const existing = db
+    .prepare("SELECT id, title_sr FROM jobs WHERE id = ? OR source_url = ? LIMIT 1")
+    .get(normalized.id, normalized.source_url);
+
+  if (!existing) {
+    db.prepare(
+      `INSERT INTO jobs
+        (id, source, source_url, title_sr, title_ru, city, salary_raw, salary_min, salary_max,
+         requirements_short, company_short, snippet, category_tag, posted_at, parsed_at, is_published)
+       VALUES (?, ?, ?, ?,
+         (SELECT title_ru FROM professions WHERE title_sr = ?),
+         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
+    ).run(
+      normalized.id, normalized.source, normalized.source_url, normalized.title_sr,
+      normalized.title_sr, normalized.city, normalized.salary_raw, salary_min, salary_max,
+      normalized.requirements_short, normalized.company_short, normalized.snippet,
+      normalized.category_tag, normalized.posted_at, normalized.parsed_at
+    );
+    return true;
+  }
+
   db.prepare(
-    `INSERT INTO jobs
-      (id, source, source_url, title_sr, title_ru, city, salary_raw, salary_min, salary_max,
-       requirements_short, company_short, snippet, category_tag, posted_at, parsed_at, is_published)
-     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-     ON CONFLICT(source_url) DO UPDATE SET
-       title_sr=excluded.title_sr,
-       city=excluded.city,
-       salary_raw=excluded.salary_raw,
-       salary_min=excluded.salary_min,
-       salary_max=excluded.salary_max,
-       requirements_short=excluded.requirements_short,
-       company_short=excluded.company_short,
-       snippet=excluded.snippet,
-       category_tag=excluded.category_tag,
-       posted_at=excluded.posted_at,
-       parsed_at=excluded.parsed_at`
+    `UPDATE jobs SET
+       source = ?, source_url = ?, title_sr = ?,
+       title_ru = CASE
+         WHEN title_sr = ? THEN title_ru
+         ELSE (SELECT title_ru FROM professions WHERE title_sr = ?)
+       END,
+       city = ?, salary_raw = ?, salary_min = ?, salary_max = ?,
+       requirements_short = ?, company_short = ?, snippet = ?,
+       category_tag = ?, posted_at = ?, parsed_at = ?
+     WHERE id = ?`
   ).run(
-    normalized.id,
-    normalized.source,
-    normalized.source_url,
-    normalized.title_sr,
-    normalized.city,
-    normalized.salary_raw,
-    salary_min,
-    salary_max,
-    normalized.requirements_short,
-    normalized.company_short,
-    normalized.snippet,
-    normalized.category_tag,
-    normalized.posted_at,
-    normalized.parsed_at
+    normalized.source, normalized.source_url, normalized.title_sr,
+    normalized.title_sr, normalized.title_sr,
+    normalized.city, normalized.salary_raw, salary_min, salary_max,
+    normalized.requirements_short, normalized.company_short, normalized.snippet,
+    normalized.category_tag, normalized.posted_at, normalized.parsed_at,
+    existing.id
   );
   return true;
 }
@@ -255,5 +277,6 @@ module.exports = {
   isAbroadJob,
   decodeHtml,
   cleanText,
+  normalizePostedAt,
   DB_PATH,
 };

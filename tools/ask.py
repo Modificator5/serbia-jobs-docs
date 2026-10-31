@@ -45,7 +45,7 @@ def http_json(url: str, payload: dict, headers: dict, timeout: int = 120,
     for attempt in range(retries):
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+                raw = resp.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "replace")[:500]
             if e.code in (429, 503) and attempt < retries - 1:
@@ -60,6 +60,15 @@ def http_json(url: str, payload: dict, headers: dict, timeout: int = 120,
                 time.sleep(3 * (attempt + 1))
                 continue
             die(f"сеть недоступна ({url.split('/')[2]}): {reason}")
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as e:
+            # Битый JSON = сбой провайдера: повтор, иначе — die (fallback-цикл).
+            last_err = f"некорректный JSON от провайдера: {e}; фрагмент: {raw[:200]}"
+            if attempt < retries - 1:
+                time.sleep(3 * (attempt + 1))
+                continue
+            die(last_err)
     die(last_err or "исчерпаны повторы")
 
 
@@ -161,18 +170,27 @@ def ask_claude(prompt: str) -> str:
         die(f"неожиданный ответ Claude: {json.dumps(data)[:300]}")
 
 
+MODEL_OF = {
+    "gemini": lambda: os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+    "ollama": lambda: os.environ.get("OLLAMA_MODEL", "gemma4:cloud"),
+    "openrouter": lambda: os.environ.get("OPENROUTER_MODEL", "free"),
+    "claude": lambda: os.environ.get("CLAUDE_MODEL", "claude"),
+    "groq": lambda: os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+}
+
+
+def prompt_hash(provider: str, prompt: str) -> str:
+    """Ключ кеша: провайдер + модель + промпт. Без провайдера ответ одного ИИ
+    уезжал бы в кеш другого (баг 2026-10-31); без модели — путаница при смене модели."""
+    return hashlib.sha256(f"{provider}|{MODEL_OF[provider]()}|{prompt}".encode()).hexdigest()
+
+
 def journal(provider: str, prompt: str, answer: str, label: str = "PENDING") -> None:
     logs_dir = ROOT / "logs"
     logs_dir.mkdir(exist_ok=True)
     path = logs_dir / "ask-journal.md"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    model = {
-        "gemini": os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
-        "ollama": os.environ.get("OLLAMA_MODEL", "gemma4:cloud"),
-        "openrouter": os.environ.get("OPENROUTER_MODEL", "free"),
-        "claude": os.environ.get("CLAUDE_MODEL", "claude"),
-        "groq": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-    }.get(provider, provider)
+    model = MODEL_OF.get(provider, lambda: provider)()
     def clip(s: str, n: int = 6000) -> str:
         return s if len(s) <= n else s[:n] + f"\n… (обрезано, всего {len(s)} символов)"
     entry = (
@@ -187,12 +205,12 @@ def get_cached_answer(provider: str, prompt: str) -> str | None:
     cache_file = MEMORY_DIR / f"{provider}.jsonl"
     if not cache_file.exists():
         return None
-    prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
+    target = prompt_hash(provider, prompt)
     with cache_file.open("r", encoding="utf-8") as f:
         for line in f:
             try:
                 entry = json.loads(line)
-                if entry.get("hash") == prompt_hash:
+                if entry.get("hash") == target:
                     return entry.get("answer")
             except json.JSONDecodeError:
                 continue
@@ -200,9 +218,13 @@ def get_cached_answer(provider: str, prompt: str) -> str | None:
 
 
 def save_to_cache(provider: str, prompt: str, answer: str) -> None:
+    if not answer:
+        return
     cache_file = MEMORY_DIR / f"{provider}.jsonl"
-    prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
-    entry = json.dumps({"hash": prompt_hash, "prompt": prompt, "answer": answer}, ensure_ascii=False)
+    entry = json.dumps(
+        {"hash": prompt_hash(provider, prompt), "prompt": prompt, "answer": answer},
+        ensure_ascii=False,
+    )
     with cache_file.open("a", encoding="utf-8") as f:
         f.write(entry + "\n")
 
@@ -246,12 +268,22 @@ def main() -> None:
     for p in fallback_order:
         try:
             answer = PROVIDERS[p](prompt)
-            print(answer)
-            save_to_cache(provider, prompt, answer)
-            journal(p, prompt, answer, "ACCEPTED")
-            return
         except SystemExit as e:
             last_error = e
+            continue
+        except Exception as e:  # битые ответы/внутренние ошибки не должны рвать fallback
+            last_error = SystemExit(f"{p}: {e}")
+            continue
+        if not answer:
+            last_error = SystemExit(f"{p}: пустой ответ")
+            continue
+        print(answer)
+        # Кеш и журнал — под ФАКТИЧЕСКИ отвечшим провайдером (p), иначе ответ
+        # одного ИИ лежит в кеше другого и возвращается молча.
+        save_to_cache(p, prompt, answer)
+        label = "ACCEPTED" if p == provider else f"ACCEPTED (fallback {provider}->{p})"
+        journal(p, prompt, answer, label)
+        return
     raise last_error or SystemExit(2)
 
 
