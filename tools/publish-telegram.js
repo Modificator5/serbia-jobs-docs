@@ -163,12 +163,29 @@ async function main() {
   }
   const db = new DatabaseSync(DB_PATH);
   db.exec("PRAGMA busy_timeout = 5000;");
+  // Дедупликация между источниками: ключ = title_sr|city|company_short без
+  // регистра. Публикуем только «каноническую» строку (свежая, при равенстве —
+  // меньший id) и не публикуем ничего, если такой ключ уже опубликован.
+  const DEDUPE_KEY = `TRIM(LOWER(COALESCE(jobs.title_sr,''))) || '|' ||
+    TRIM(LOWER(COALESCE(jobs.city,''))) || '|' ||
+    TRIM(LOWER(COALESCE(jobs.company_short,'')))`;
+  const OTHER_KEY = `TRIM(LOWER(COALESCE(d.title_sr,''))) || '|' ||
+    TRIM(LOWER(COALESCE(d.city,''))) || '|' ||
+    TRIM(LOWER(COALESCE(d.company_short,'')))`;
   const jobs = db.prepare(
     `SELECT id, source_url, title_sr, title_ru, city, salary_raw, snippet,
             category_tag, posted_at
      FROM jobs
      WHERE is_published = 0
        AND title_ru IS NOT NULL AND TRIM(title_ru) <> ''
+       AND TRIM(title_sr) <> ''
+       AND NOT EXISTS (
+         SELECT 1 FROM jobs d
+         WHERE d.id <> jobs.id
+           AND d.title_ru IS NOT NULL AND TRIM(d.title_ru) <> ''
+           AND ${OTHER_KEY} = ${DEDUPE_KEY}
+           AND (d.is_published = 1 OR d.id < jobs.id)
+       )
      ORDER BY COALESCE(posted_at, substr(parsed_at, 1, 10)) DESC, id
      LIMIT ?`
   ).all(LIMIT);

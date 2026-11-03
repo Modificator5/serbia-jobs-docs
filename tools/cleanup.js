@@ -15,6 +15,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { readHistory, detectDrops } = require("./source-stats");
 
 const ROOT = path.join(__dirname, "..");
 const DB_PATH = process.env.JOBS_DB || path.join(ROOT, "data", "jobs.db");
@@ -49,14 +50,23 @@ const bySource = db.prepare(
    FROM jobs GROUP BY source`
 ).all(CUTOFF);
 
-const stalled = bySource.filter((s) => s.last_seen < CUTOFF).map((s) => s.source);
-const healthy = bySource.filter((s) => s.last_seen >= CUTOFF);
+// Та же сигнатура просадки, что и в source-stats: мало вакансий за прогон
+// (<50% от среднего за 7 дней) — источник подозрителен, его не чистим.
+const day = new Date().toISOString().slice(0, 10);
+const current = Object.fromEntries(bySource.map((s) => [s.source, s.total]));
+const dropped = new Set(detectDrops(current, readHistory(), day).map((d) => d.source));
+const stalled = bySource
+  .filter((s) => s.last_seen < CUTOFF || dropped.has(s.source))
+  .map((s) => s.source);
+const healthy = bySource.filter((s) => !stalled.includes(s.source));
 const total = bySource.reduce((n, s) => n + s.total, 0);
 const toDelete = healthy.reduce((n, s) => n + s.stale, 0);
 
 console.log(`Порог: parsed_at < ${CUTOFF} (${DAYS} дн.)`);
 for (const s of bySource) {
-  const mark = stalled.includes(s.source) ? "  ПРОПУСК: источник не обновлялся" : "";
+  const mark = stalled.includes(s.source)
+    ? `  ПРОПУСК: ${dropped.has(s.source) ? "просадка к среднему" : "источник не обновлялся"}`
+    : "";
   const seen = s.last_seen ? String(s.last_seen).slice(0, 10) : "—";
   console.log(`  ${s.source}: всего ${s.total}, устарело ${s.stale}, последний показ ${seen}${mark}`);
 }

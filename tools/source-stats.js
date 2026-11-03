@@ -22,6 +22,28 @@ function readHistory() {
   }).filter(Boolean);
 }
 
+// Общая детекция просадки: её использует и daily-сводка, и cleanup.
+function detectDrops(counts, history, day) {
+  const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
+  const avg = {};
+  for (const row of history) {
+    if (!row?.date || row.date < since || row.date === day) continue;
+    for (const [source, n] of Object.entries(row.counts || {})) {
+      (avg[source] ||= []).push(n);
+    }
+  }
+  const drops = [];
+  for (const [source, n] of Object.entries(counts)) {
+    const past = avg[source];
+    if (!past || !past.length) continue;
+    const mean = past.reduce((a, b) => a + b, 0) / past.length;
+    if (mean > 0 && n < mean * DROP_RATIO) {
+      drops.push({ source, today: n, mean });
+    }
+  }
+  return drops;
+}
+
 function main() {
   const db = openReadOnlyDb();
   let counts;
@@ -35,34 +57,18 @@ function main() {
   }
 
   const day = today();
-  const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
-  const history = readHistory();
-  const avg = {};
-  for (const row of history) {
-    if (!row?.date || row.date < since || row.date === day) continue;
-    for (const [source, n] of Object.entries(row.counts || {})) {
-      (avg[source] ||= []).push(n);
-    }
-  }
-
-  const warnings = [];
-  for (const [source, n] of Object.entries(counts)) {
-    const past = avg[source];
-    if (!past || !past.length) continue;
-    const mean = past.reduce((a, b) => a + b, 0) / past.length;
-    if (mean > 0 && n < mean * DROP_RATIO) {
-      warnings.push(`${source}: сегодня ${n}, среднее за ${WINDOW_DAYS} дн. ${mean.toFixed(1)} (<50%)`);
-    }
-  }
+  const drops = detectDrops(counts, readHistory(), day);
 
   fs.mkdirSync(path.dirname(HISTORY), { recursive: true });
   fs.appendFileSync(HISTORY, JSON.stringify({ date: day, counts }) + "\n", "utf8");
 
   const summary = Object.entries(counts).map(([s, n]) => `${s}=${n}`).join(" ");
   console.log(`source-counts ${day}: ${summary || "нет данных"}`);
-  for (const w of warnings) console.warn(`WARN просадка ${w}`);
+  for (const d of drops) {
+    console.warn(`WARN просадка ${d.source}: сегодня ${d.today}, среднее за ${WINDOW_DAYS} дн. ${d.mean.toFixed(1)} (<50%)`);
+  }
   return 0;
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { readHistory, main };
+module.exports = { readHistory, detectDrops, main };

@@ -54,9 +54,14 @@ try {
   const db = new DatabaseSync(path.join(TMP, "jobs.db"));
   db.exec(`CREATE TABLE jobs (id TEXT, source_url TEXT, title_sr TEXT, title_ru TEXT,
     city TEXT, salary_raw TEXT, snippet TEXT, category_tag TEXT, posted_at TEXT,
-    parsed_at TEXT, is_published INTEGER DEFAULT 0)`);
+    parsed_at TEXT, company_short TEXT, is_published INTEGER DEFAULT 0)`);
   db.exec(`INSERT INTO jobs (id, source_url, title_sr, title_ru, is_published)
     VALUES ('a','u-a','Kuvar',NULL,0), ('b','u-b','Konobar','Официант',0)`);
+  // Кросс-источниковые дубли: c/d одинаковы — публикуется c; f дубль b.
+  db.exec(`INSERT INTO jobs (id, source_url, title_sr, title_ru, city, company_short, is_published)
+    VALUES ('c','u-c','Programer','Программист','Beograd','Firma',0),
+           ('d','u-d','Programer','Программист','Beograd','Firma',0),
+           ('f','u-f','Konobar','Официант',NULL,NULL,0)`);
   db.close();
   const out = execFileSync("node", [path.join(__dirname, "..", "tools", "publish-telegram.js"), "--dry"], {
     encoding: "utf8",
@@ -64,6 +69,9 @@ try {
   });
   assert.doesNotMatch(out, /u-a/);
   assert.match(out, /u-b/);
+  assert.match(out, /u-c/);
+  assert.doesNotMatch(out, /u-d/);
+  assert.doesNotMatch(out, /u-f/);
 } finally {
   fs.rmSync(TMP, { recursive: true, force: true });
 }

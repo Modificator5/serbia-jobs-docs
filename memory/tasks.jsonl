@@ -30,3 +30,5 @@
 {"date":"2026-11-03","status":"SOLVED","task":"T2.10 daily: mkdir lock, source stats drop warning","tags":["t2","daily","lock","monitoring"],"refs":["tools/daily.sh","tools/source-stats.js","tests/source-stats.test.js"]}
 {"date":"2026-11-03","status":"SOLVED","task":"T2.11 db: user_version migrations, URL collision, nocase glossary, abroad negation","tags":["t2","db","schema","upsert"],"refs":["scrapers/db.js","tests/db.test.js"]}
 {"date":"2026-11-03","status":"SOLVED","task":"T2.12 offline tests for ai/backup/cleanup/glossary plus suite wiring","tags":["t2","tests","node"],"refs":["tests/ai.test.js","tests/backup.test.js","tests/cleanup.test.js","tests/import-glossary.test.js","package.json"]}
+{"date":"2026-11-03","status":"SOLVED","task":"T4.1 source health: cleanup consults same drop signal as source-stats","tags":["t4","cleanup","source-stats","monitoring"],"refs":["tools/cleanup.js","tools/source-stats.js"]}
+{"date":"2026-11-03","status":"SOLVED","task":"T4.2 cross-source deduplication in publish by title|city|company","tags":["t4","publish","dedup","telegram"],"refs":["tools/publish-telegram.js","tests/publish.test.js"]}
