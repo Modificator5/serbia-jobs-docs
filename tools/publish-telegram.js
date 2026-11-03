@@ -47,6 +47,18 @@ function clip(s, n) {
   return t.length <= n ? t : t.slice(0, Math.max(0, n - 1)).trimEnd() + "…";
 }
 
+// Телефоны и e-mail в канал не попадают (персональные данные, спам).
+function sanitizeSnippet(text) {
+  const cleaned = String(text || "")
+    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, " ")
+    .replace(/\+?\d[\d\s()-]{6,}\d/g, (m) => {
+      if (m.replace(/\D/g, "").length < 7) return m;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(m.trim())) return m;
+      return " ";
+    });
+  return clip(cleaned, cleaned.length);
+}
+
 const MAX_LEN = 4096;
 
 // Собираем карточку так, чтобы ссылка гарантированно не обрезалась:
@@ -62,7 +74,9 @@ function card(job) {
   const tag = job.category_tag && job.category_tag !== "drugo" ? `#${job.category_tag}` : "";
   const fixed = [clip(title, 200), meta, url, tag].filter(Boolean).join("\n");
   const budget = MAX_LEN - fixed.length - 2;
-  const snippet = job.snippet && budget > 40 ? clip(job.snippet, Math.min(300, budget)) : null;
+  const snippet = job.snippet && budget > 40
+    ? clip(sanitizeSnippet(job.snippet), Math.min(300, budget))
+    : null;
   const lines = [clip(title, 200)];
   if (meta) lines.push(meta);
   if (snippet) lines.push(snippet);
@@ -154,6 +168,7 @@ async function main() {
             category_tag, posted_at
      FROM jobs
      WHERE is_published = 0
+       AND title_ru IS NOT NULL AND TRIM(title_ru) <> ''
      ORDER BY COALESCE(posted_at, substr(parsed_at, 1, 10)) DESC, id
      LIMIT ?`
   ).all(LIMIT);
@@ -216,4 +231,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { card, formatDate, parseArgs };
+module.exports = { card, formatDate, parseArgs, sanitizeSnippet };

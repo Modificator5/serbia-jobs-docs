@@ -44,8 +44,8 @@ db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;");
 const bySource = db.prepare(
   `SELECT source,
           COUNT(*) AS total,
-          SUM(CASE WHEN substr(parsed_at, 1, 10) < ? THEN 1 ELSE 0 END) AS stale,
-          MAX(substr(parsed_at, 1, 10)) AS last_seen
+          SUM(CASE WHEN parsed_at < ? THEN 1 ELSE 0 END) AS stale,
+          MAX(parsed_at) AS last_seen
    FROM jobs GROUP BY source`
 ).all(CUTOFF);
 
@@ -57,7 +57,8 @@ const toDelete = healthy.reduce((n, s) => n + s.stale, 0);
 console.log(`Порог: parsed_at < ${CUTOFF} (${DAYS} дн.)`);
 for (const s of bySource) {
   const mark = stalled.includes(s.source) ? "  ПРОПУСК: источник не обновлялся" : "";
-  console.log(`  ${s.source}: всего ${s.total}, устарело ${s.stale}, последний показ ${s.last_seen}${mark}`);
+  const seen = s.last_seen ? String(s.last_seen).slice(0, 10) : "—";
+  console.log(`  ${s.source}: всего ${s.total}, устарело ${s.stale}, последний показ ${seen}${mark}`);
 }
 
 if (stalled.length) {
@@ -84,7 +85,7 @@ if (!toDelete) {
 
 const healthyNames = healthy.map((s) => s.source);
 const marks = healthyNames.map(() => "?").join(",");
-const stale = `substr(parsed_at, 1, 10) < ? AND source IN (${marks})`;
+const stale = `parsed_at < ? AND source IN (${marks})`;
 const params = [CUTOFF, ...healthyNames];
 
 db.exec("BEGIN");

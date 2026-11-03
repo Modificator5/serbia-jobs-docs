@@ -18,8 +18,8 @@ console.log(`doctor: проверяю окружение${CI ? " (CI)" : ""}...`
 
 // Node
 const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
-if (nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 5)) ok(`node ${process.versions.node}`);
-else fail(`node ${process.versions.node} (нужен >= 22.5 для node:sqlite)`);
+if (nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 13)) ok(`node ${process.versions.node}`);
+else fail(`node ${process.versions.node} (нужен >= 22.13: node:sqlite без флага)`);
 
 // Обязательные файлы кода/доков (всегда)
 for (const p of [
@@ -46,6 +46,32 @@ if (exists(".git")) {
   tracked.includes("memory/tasks.jsonl")
     ? ok("memory/tasks.jsonl в git (по конституции)")
     : warn("memory/tasks.jsonl не в git (должен входить по AGENTS.md §4)");
+
+  // Секреты в СОДЕРЖИМОМ отслеживаемых файлов (есть публичное зеркало).
+  const secretPatterns = [
+    [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "приватный ключ"],
+    [/\b\d{8,10}:[A-Za-z0-9_-]{35}\b/, "Telegram bot token"],
+    [/\bsk-[A-Za-z0-9]{20,}\b/, "API key (sk-)"],
+    [/\bghp_[A-Za-z0-9]{36}\b/, "GitHub token"],
+    [/\bAIza[0-9A-Za-z_-]{35}\b/, "Google API key"],
+    [/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/, "Slack token"],
+  ];
+  const leaks = [];
+  for (const f of tracked) {
+    if (!f || f.endsWith(".png") || f.endsWith(".jpg") || f.endsWith(".zip")) continue;
+    let text;
+    try {
+      text = fs.readFileSync(path.join(ROOT, f), "utf8");
+    } catch {
+      continue;
+    }
+    if (text.includes("\0")) continue;
+    for (const [re, label] of secretPatterns) {
+      if (re.test(text)) leaks.push(`${f} (${label})`);
+    }
+  }
+  leaks.length ? fail(`похоже на секреты в git: ${leaks.slice(0, 5).join(", ")}`)
+               : ok("в содержимом отслеживаемых файлов нет секретов");
 }
 
 // .env нужен только для ИИ-шагов
@@ -81,9 +107,12 @@ if (!exists("data/jobs.db")) {
   }
 }
 
-// Python-мост
+// Python-мост (ast.parse не создаёт tools/__pycache__)
 try {
-  execSync("python3 -m py_compile tools/ask.py", { cwd: ROOT, stdio: "pipe" });
+  execSync(
+    "python3 -c \"import ast; ast.parse(open('tools/ask.py', encoding='utf-8').read())\"",
+    { cwd: ROOT, stdio: "pipe" }
+  );
   ok("tools/ask.py — синтаксис python");
 } catch {
   fail("tools/ask.py — ошибка синтаксиса python");

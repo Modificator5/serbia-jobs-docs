@@ -115,6 +115,29 @@ function parseDateDMY(s) {
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
+function openReadOnlyDb() {
+  const db = new DatabaseSync(DB_PATH, { readOnly: true });
+  db.exec("PRAGMA busy_timeout = 5000;");
+  return db;
+}
+
+const SCHEMA_VERSION = 2;
+
+function ensureColumn(db, table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+
+function migrate(db) {
+  // Идемпотентно: старые БД без user_version и новые проходят одни и те же шаги.
+  ensureColumn(db, "jobs", "snippet", "snippet TEXT");
+  ensureColumn(db, "jobs", "enriched_at", "enriched_at TEXT");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_jobs_parsed_at ON jobs(parsed_at)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_glossary_term_nocase ON glossary(term COLLATE NOCASE)");
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+}
+
 function openDb() {
   const db = new DatabaseSync(DB_PATH);
   db.exec(`
@@ -169,13 +192,7 @@ function openDb() {
       PRIMARY KEY(job_url, word_id)
     );
   `);
-  const cols = db.prepare("PRAGMA table_info(jobs)").all().map((c) => c.name);
-  if (!cols.includes("snippet")) {
-    db.exec("ALTER TABLE jobs ADD COLUMN snippet TEXT");
-  }
-  if (!cols.includes("enriched_at")) {
-    db.exec("ALTER TABLE jobs ADD COLUMN enriched_at TEXT");
-  }
+  migrate(db);
   return db;
 }
 
@@ -184,7 +201,7 @@ function openDb() {
 // Только контекстные формы «в X-ии / за X-ию» — иначе ложные срабатывания
 // («nemački jezik» = немецкий язык, «švedski sto» = шведская стенка).
 const ABROAD_NEEDLES = [
-  "inostranstv", "europi", "evropi", "preko granic",
+  "europi", "evropi", "preko granic",
   "u nemačkoj", "u nemackoj", "u njemackoj", "u njemačkoj",
   "za nemačku", "za nemacku", "za njemacku",
   "u austriji", "za austriju",
@@ -211,10 +228,24 @@ const ABROAD_PLACES = [
   "amerika", "velika britanija", "engleska", "malta", "luksemburg",
 ];
 
+// «inostranstvo» — отдельно: «rad u inostranstvu» означает заграницу, но
+// «rad u inostranstvu nije potreban» — наоборот, и такие вакансии терять нельзя.
+function mentionsAbroad(s) {
+  const re = /inostranstv\w*/gi;
+  for (const m of s.matchAll(re)) {
+    const before = s.slice(Math.max(0, m.index - 20), m.index);
+    const after = s.slice(m.index + m[0].length, m.index + m[0].length + 40);
+    if (/\b(?:nije|ne)\s+(?:potreban|potrebno|neophodan|uslov)\b/i.test(after)) continue;
+    if (/(?:^|\s)(?:u|za|van|iz)\s*$/i.test(before)) return true;
+  }
+  return false;
+}
+
 function isAbroadJob(job) {
   const city = (job.city || "").toLowerCase();
   if (ABROAD_PLACES.some((p) => city.includes(p))) return true;
   const s = `${job.title_sr || ""} ${job.city || ""} ${job.snippet || ""}`.toLowerCase();
+  if (mentionsAbroad(s)) return true;
   return ABROAD_NEEDLES.some((n) => s.includes(n));
 }
 
@@ -246,7 +277,7 @@ function upsertJob(db, job) {
   // а id остается. При смене title_sr прежний перевод невалиден — перечитываем
   // из кеша professions, иначе помечаем NULL для повторного перевода.
   const existing = db
-    .prepare("SELECT id, title_sr FROM jobs WHERE id = ? OR source_url = ? LIMIT 1")
+    .prepare("SELECT id, title_sr, source_url FROM jobs WHERE id = ? OR source_url = ? LIMIT 1")
     .get(normalized.id, normalized.source_url);
 
   if (!existing) {
@@ -266,6 +297,13 @@ function upsertJob(db, job) {
     return true;
   }
 
+  // source_url UNIQUE: если новый URL уже занят другой строкой (дубль с иным id),
+  // не падаем и не перетираем чужую ссылку — оставляем прежний URL этой вакансии.
+  const clash = db
+    .prepare("SELECT id FROM jobs WHERE source_url = ? AND id <> ? LIMIT 1")
+    .get(normalized.source_url, existing.id);
+  const targetUrl = clash ? existing.source_url : normalized.source_url;
+
   db.prepare(
     `UPDATE jobs SET
        source = ?, source_url = ?, title_sr = ?,
@@ -278,7 +316,7 @@ function upsertJob(db, job) {
        category_tag = ?, posted_at = ?, parsed_at = ?
      WHERE id = ?`
   ).run(
-    normalized.source, normalized.source_url, normalized.title_sr,
+    normalized.source, targetUrl, normalized.title_sr,
     normalized.title_sr, normalized.title_sr,
     normalized.city, normalized.salary_raw, salary_min, salary_max,
     normalized.requirements_short, normalized.company_short, normalized.snippet,
@@ -290,13 +328,15 @@ function upsertJob(db, job) {
 
 module.exports = {
   openDb,
+  openReadOnlyDb,
   upsertJob,
   parseSalary,
   categoryTag,
   parseDateDMY,
-  isAbroadJob,
   decodeHtml,
   cleanText,
   normalizePostedAt,
   DB_PATH,
+  SCHEMA_VERSION,
+  isAbroadJob,
 };

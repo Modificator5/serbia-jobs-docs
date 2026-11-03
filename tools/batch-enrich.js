@@ -59,7 +59,7 @@ function applyResults(db, pending, results) {
   const updateJob = db.prepare("UPDATE jobs SET title_ru = ?, enriched_at = ? WHERE id = ?");
   const markEnriched = db.prepare("UPDATE jobs SET enriched_at = ? WHERE id = ?");
   const insertTerm = db.prepare("INSERT OR IGNORE INTO glossary (term, definition) VALUES (?, ?)");
-  const selectTerm = db.prepare("SELECT id FROM glossary WHERE term = ?");
+  const selectTerm = db.prepare("SELECT id FROM glossary WHERE term = ? COLLATE NOCASE");
   const linkTerm = db.prepare(
     "INSERT OR IGNORE INTO job_words (job_url, word_id, context_snippet) VALUES (?, ?, ?)"
   );

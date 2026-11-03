@@ -8,7 +8,8 @@ const { openDb } = require("../scrapers/db");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const BAZA_PATH = path.join(__dirname, "..", "docs/glossary/bazaznanja.txt");
+const BAZA_PATH = process.env.GLOSSARY_FILE ||
+  path.join(__dirname, "..", "docs/glossary/bazaznanja.txt");
 const MAX_WARNINGS = 10;
 
 // Строка-разделитель markdown-таблицы: |---|---|, | :--- | ---: | и т.п.
@@ -25,7 +26,7 @@ function importBazaznanja() {
     const insTerm = db.prepare(
       "INSERT OR IGNORE INTO glossary (category_id, term, definition) VALUES (?, ?, ?)"
     );
-    const selTerm = db.prepare("SELECT definition FROM glossary WHERE term = ?");
+    const selTerm = db.prepare("SELECT definition FROM glossary WHERE term = ? COLLATE NOCASE");
 
     let currentCategory = "Общее";
     let inserted = 0;

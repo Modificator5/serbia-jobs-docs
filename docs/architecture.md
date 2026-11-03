@@ -50,8 +50,10 @@ Infostud / KP / HaloOglasi / HelloWorld
    возвращает конверт `{"status":"success","data":...}`, нормализуемый
    `tools/ai.js`. Формат нарушен = синтаксическая ошибка (один повтор, затем fallback);
    журнал — `logs/ask-journal.jsonl`, кеш — `.ai_memory/<provider>.jsonl`.
-9. **Офлайн-тесты.** `tests/parsers.test.js` проверяет парсеры на фикстурах без
-   сети; `tools/check.js` — хелперы и синхронность артефактов; CI — `npm run verify`.
+9. **Офлайн-тесты.** `tests/*.test.js` проверяют парсеры (фикстуры), публикатор,
+   ask/память, экспорт, backup/cleanup, схему БД без сети; `tools/check.js` —
+   хелперы и синхронность артефактов (ошибки собираются в один отчёт, устаревший
+   экспорт — warning); CI — `npm run verify`.
 
 ## Схема jobs.db (кратко)
 

@@ -11,11 +11,20 @@ LOG="logs/daily-$(date +%F).log"
 mkdir -p logs
 
 # Лок: параллельный запуск двух daily.sh пишет в одну БД — запрещён.
-exec 9>logs/.daily.lock
-if ! flock -n 9; then
-  echo "daily.sh уже запущен (lock logs/.daily.lock) — выходим."
-  exit 1
+# mkdir атомарен и не требует flock (нет в части образов/BSD).
+LOCK=logs/.daily.lock.d
+if ! mkdir "$LOCK" 2>/dev/null; then
+  if [ -f "$LOCK/pid" ] && kill -0 "$(cat "$LOCK/pid")" 2>/dev/null; then
+    echo "daily.sh уже запущен (lock $LOCK, pid $(cat "$LOCK/pid")) — выходим."
+    exit 1
+  fi
+  echo "Снимаю устаревший лок $LOCK (процесс не жив)."
+  rm -rf "$LOCK"
+  mkdir "$LOCK" || { echo "Не удалось взять лок $LOCK"; exit 1; }
 fi
+echo $$ > "$LOCK/pid"
+release_lock() { rm -rf "$LOCK"; }
+trap release_lock EXIT INT TERM
 
 exec > >(tee -a "$LOG") 2>&1
 
@@ -44,6 +53,7 @@ sleep 5
 run scrape:ho   node scrapers/halooglasi.js
 sleep 5
 run scrape:hw   node scrapers/helloworld.js 3
+run source-counts node tools/source-stats.js
 
 # Фиксируем, всё ли в порядке к этому моменту (копия + парсеры), до разрушающего шага.
 SAFE_TO_CLEAN=$FAILED

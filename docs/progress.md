@@ -136,3 +136,22 @@ HaloOglasi/HelloWorld; публичная витрина сместилась с
   роль `ROUTINE_LOCAL`; `.env.example` больше не задаёт модели.
 - Тесты: `tests/ask.test.js` (stub-провайдер, кеш, повтор, fallback, журнал,
   локальность), `tests/memory.test.js`; оба в `npm test`.
+
+## 2026-11-03 — T2 (остаток): мелкие баги и защита
+
+- `check.js`: устаревший `jobs.json` — предупреждение (сверка только для свежего
+  экспорта), все дефекты артефактов в одном отчёте; `tests/check.test.js`.
+- `doctor`: Node >= 22.13 (+`.nvmrc`), проверка секретов в содержимом tracked-файлов,
+  `ast.parse` вместо `py_compile` (без `__pycache__`).
+- `docs-check`: якоря `file.md#anchor` и проверка путей репозитория в
+  `AGENTS.md`/`AI.md`/`SYSTEM.md`/`prompts`; исправлена ссылка `AI.md`.
+- Экспорт: общий `openReadOnlyDb`, атомарная запись (`tools/file-utils.js`),
+  нейтрализация CSV-формул и `\r`; `tests/export.test.js`.
+- Публикатор: только вакансии с непустым `title_ru`, телефоны/e-mail вырезаются
+  из сниппета; `tests/publish.test.js` дополнен.
+- `daily.sh`: портируемый лок через `mkdir` (без `flock`), `source-stats` с
+  предупреждением о просадке источника; `tests/source-stats.test.js`.
+- `scrapers/db.js`: `PRAGMA user_version` + идемпотентные миграции, индексы
+  `parsed_at`/`source`/`glossary(term COLLATE NOCASE)`, обработка UNIQUE-коллизии
+  `source_url`, `inostranstvo` с отрицанием; `tests/db.test.js`.
+- Тесты добавлены в `npm test`: ai, backup, cleanup, import-glossary.

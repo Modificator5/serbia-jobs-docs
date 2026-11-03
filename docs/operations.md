@@ -10,7 +10,8 @@ npm run translate       # перевод новых title_sr через кеш p
 npm run enrich          # батч-обогащение: перевод + термины → glossary/job_words (ROUTINE_LOCAL)
 npm run cleanup         # удалить вакансии, невиденные >30 дней (last_seen); флаги --dry/--force
 node tools/backup-db.js [keep=14]   # VACUUM INTO + integrity_check в snapshots/backups/
-npm run export:csv      # снимок snapshots/jobs.csv (бэкап + тесты без сети)
+node tools/source-stats.js          # счётчики по источникам + warning о просадке (<50% от 7-дневного среднего)
+npm run export:csv      # снимок snapshots/jobs.csv: атомарная запись, защита от CSV-формул
 npm run export:json     # публичный jobs.json
 npm run viewer          # локальный сайт http://127.0.0.1:7788
 npm run publish:telegram -- [N] [--dry]   # Telegram-публикация карточек
@@ -21,7 +22,7 @@ node tools/memory.js search "запрос [тег]"   # память задач
 ## Цикл
 
 Локально: `daily.sh` (парсинг → перевод → обогащение → очистка → экспорт → check).
-Cron (ночь): `bash tools/daily.sh` — flock не даст запуститься дважды; код возврата
+Cron (ночь): `bash tools/daily.sh` — лок `logs/.daily.lock.d` (mkdir, без flock) не даст запуститься дважды; код возврата
 отражает упавшие шаги. Сырой прогон всех источников: редкое событие по явной команде.
 
 ## Тесты и CI
