@@ -8,7 +8,8 @@ npm run runAll          # полный дневной цикл = bash tools/dail
 npm run scrape:kp       # точечный скрейп (kp / infostud / ho / hw)
 npm run translate       # перевод новых title_sr через кеш professions (ollama)
 npm run enrich          # батч-обогащение: перевод + термины → glossary/job_words
-npm run cleanup         # удалить вакансии, невиденные >30 дней (last_seen)
+npm run cleanup         # удалить вакансии, невиденные >30 дней (last_seen); флаги --dry/--force
+node tools/backup-db.js [keep=14]   # VACUUM INTO + integrity_check в snapshots/backups/
 npm run export:csv      # снимок snapshots/jobs.csv (бэкап + тесты без сети)
 npm run export:json     # публичный jobs.json
 npm run viewer          # локальный сайт http://127.0.0.1:7788
@@ -50,7 +51,23 @@ Cron (ночь): `bash tools/daily.sh` — flock не даст запустит�
 Правило 30 дней по **last_seen**: вакансия неактуальна, если её не показывали в
 листингах 30 дней (`parsed_at` — момент последнего показа). `posted_at` —
 вспомогательное поле; даты из будущего → NULL. Запуск входит в `daily.sh`;
-вручную: `node tools/cleanup.js [дней]`.
+вручную: `node tools/cleanup.js [дней] [--dry] [--force]`.
+
+Защита от потери данных:
+- источник, у которого нет ни одной свежей записи за N дней, считается
+  остановившимся и пропускается целиком (его вакансии не удаляются);
+- если к удалению набирается больше 50% всех вакансий, скрипт отказывается
+  работать без `--force` (отказ действует и для `--dry`);
+- `--dry` печатает план по источникам и ничего не удаляет.
+
+## Резервные копии
+
+`node tools/backup-db.js [keep=14]` делает `VACUUM INTO` копию в
+`snapshots/backups/jobs-YYYY-MM-DD.db` (UTC), проверяет `PRAGMA integrity_check`
+и хранит `keep` новейших файлов. `VACUUM INTO` обязателен: база в WAL-режиме,
+поэтому простое копирование `jobs.db` может пропустить свежие записи из `jobs.db-wal`.
+`snapshots/` в git не входит. `daily.sh` делает бэкап первым шагом и запускает
+`cleanup` только если бэкап и все парсеры завершились успешно.
 
 ## Публикация сайта (GitHub Pages)
 
