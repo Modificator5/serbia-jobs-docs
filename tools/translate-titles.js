@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { openDb } = require("../scrapers/db");
 const { ask, normalizeWorkerJson } = require("./ai");
+const { isValidTitleRu } = require("./validators");
 
 const PROVIDER = process.argv[2] || "ollama";
 const BATCH = parseInt(process.argv[3] || "70", 10);
@@ -85,8 +86,8 @@ function applyBatch(db, batch, data) {
   try {
     batch.forEach((title, i) => {
       const ru = getByTitle(title) ?? data[String(i + 1)];
-      if (typeof ru === "string" && ru.trim()) {
-        const value = ru.trim();
+      const value = typeof ru === "string" ? ru.trim() : "";
+      if (isValidTitleRu(value)) {
         insProf.run(title, value);
         updJob.run(value, title);
         done++;

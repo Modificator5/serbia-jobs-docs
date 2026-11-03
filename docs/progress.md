@@ -116,3 +116,9 @@ HaloOglasi/HelloWorld; публичная витрина сместилась с
   до 5 релевантных терминов из `glossary`.
 - `openDb()` вместо ручного создания схемы; транзакция с `ROLLBACK` при ошибке.
 - Тест: `tests/translate.test.js`, включён в `npm test`.
+
+## 2026-11-03 — T2.5: валидаторы LLM-вывода
+
+- Новый `tools/validators.js`: `isValidTitleRu`, `isValidDefinition`.
+- Подключены в `batch-enrich` и `translate-titles` до записи в БД.
+- Тест: `tests/validators.test.js`, включён в `npm test`.

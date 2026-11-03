@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { openDb } = require("../scrapers/db");
 const { ask, normalizeWorkerJson } = require("./ai");
+const { isValidTitleRu, isValidDefinition } = require("./validators");
 
 const PROVIDER = process.argv[2] || "ollama";
 const BATCH_SIZE = parseInt(process.argv[3] || "20", 10);
@@ -83,11 +84,11 @@ function applyResults(db, pending, results) {
           continue;
         }
 
-        if (typeof result.title_ru === "string" && result.title_ru.trim()) {
-          const cached = getProf.get(job.title_sr);
-          const ru = (cached?.title_ru || result.title_ru).trim().slice(0, 200);
-          if (!cached) insProf.run(job.title_sr, ru);
-          updateJob.run(ru, now, job.id);
+        const cached = getProf.get(job.title_sr);
+        const candidate = String(cached?.title_ru || result.title_ru || "").trim();
+        if (isValidTitleRu(candidate)) {
+          if (!cached) insProf.run(job.title_sr, candidate);
+          updateJob.run(candidate, now, job.id);
           updated++;
         } else {
           markEnriched.run(now, job.id);
@@ -97,7 +98,7 @@ function applyResults(db, pending, results) {
           if (!term?.term || !term?.definition) continue;
           const t = String(term.term).trim().slice(0, 120);
           const d = String(term.definition).trim().slice(0, 500);
-          if (!t || !d) continue;
+          if (!t || !isValidDefinition(d)) continue;
           insertTerm.run(t, d);
           const word = selectTerm.get(t);
           if (word) {
