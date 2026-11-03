@@ -21,7 +21,7 @@
     "cleanup": "node tools/cleanup.js",
     "viewer": "node viewer/server.js",
     "check": "node tools/check.js",
-    "test": "node tools/check.js && node tests/check.test.js && node tests/parsers.test.js && node tests/publish.test.js && node tests/enrich.test.js && node tests/translate.test.js && node tests/validators.test.js && node tests/ask.test.js && node tests/memory.test.js && node tests/export.test.js && node tests/source-stats.test.js && node tests/db.test.js && node tests/ai.test.js && node tests/backup.test.js && node tests/cleanup.test.js && node tests/import-glossary.test.js",
+    "test": "node tools/check.js && node tests/check.test.js && node tests/parsers.test.js && node tests/publish.test.js && node tests/enrich.test.js && node tests/translate.test.js && node tests/validators.test.js && node tests/ask.test.js && node tests/memory.test.js && node tests/export.test.js && node tests/source-stats.test.js && node tests/db.test.js && node tests/ai.test.js && node tests/backup.test.js && node tests/cleanup.test.js && node tests/import-glossary.test.js && node tests/prompts.test.js",
     "doctor": "node tools/doctor.js",
     "docs:check": "node tools/docs-check.js",
     "verify": "node tools/doctor.js && npm test && node tools/docs-check.js",
@@ -37,6 +37,7 @@
     "test:ai": "node tests/ai.test.js",
     "test:backup": "node tests/backup.test.js",
     "test:cleanup": "node tests/cleanup.test.js",
-    "test:glossary": "node tests/import-glossary.test.js"
+    "test:glossary": "node tests/import-glossary.test.js",
+    "test:prompts": "node tests/prompts.test.js"
   }
 }
