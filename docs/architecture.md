@@ -44,9 +44,12 @@ Infostud / KP / HaloOglasi / HelloWorld
 7. **Витрина: Telegram первичен.** Карточки публикуются `tools/publish-telegram.js`
    (пометка `is_published`, dry-run без токена). GitHub Pages — вторичный канал:
    `jobs.json` не в git, статический деплой включается отдельно (decision 2026-10-31).
-8. **Слой воркеров.** `tools/ask.py` + `prompts/worker-core.md` + ролевой файл;
-   рутина возвращает конверт `{"status":"success","data":...}`, нормализуемый
-   `tools/ai.js`. Формат нарушен = синтаксическая ошибка (один повтор, затем fallback).
+8. **Слой воркеров.** `tools/ask.py` + `prompts/worker-core.md` + ролевой файл.
+   Вызов идёт по роли (`ROUTINE_LOCAL`, `CODE_FAST`, `LOGIC_CORE`), а провайдеры,
+   модели, внешность и порядок fallback заданы в `config/providers.json`. Рутина
+   возвращает конверт `{"status":"success","data":...}`, нормализуемый
+   `tools/ai.js`. Формат нарушен = синтаксическая ошибка (один повтор, затем fallback);
+   журнал — `logs/ask-journal.jsonl`, кеш — `.ai_memory/<provider>.jsonl`.
 9. **Офлайн-тесты.** `tests/parsers.test.js` проверяет парсеры на фикстурах без
    сети; `tools/check.js` — хелперы и синхронность артефактов; CI — `npm run verify`.
 

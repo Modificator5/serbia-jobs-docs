@@ -88,7 +88,7 @@ These limits keep the project affordable to run. They apply to API and worker sp
 <token_economy>
 - Send the LLM statistics and two or three short sample fragments of a page. Raw HTML costs a lot of tokens and adds noise.
 - Use at most two worker calls per non-trivial task, for a second opinion. Routine work takes one call to a local provider.
-- Route work by type: translations and batches go to `ollama` (local), analysis goes to `gemini`, and `openrouter` is the fallback.
+- Route work by type: translations and batches go to `ROUTINE_LOCAL`; code review and refactoring go to `CODE_FAST`; architecture and analysis go to `LOGIC_CORE`, which falls back to a second hosted provider.
 - Check the `.ai_memory/` cache and `memory/tasks.jsonl` first, then call a worker.
 - Keep the parser page defaults small (KP 5, Infostud 2) and keep the pauses between requests at their current values or longer. Sites throttle and ban fast clients.
 - Run tests and backtests against CSV files and fixtures, not the network, so they stay fast and repeatable.
@@ -101,12 +101,12 @@ These limits keep the project affordable to run. They apply to API and worker sp
 
 | Key | Purpose | Who | Instruction file |
 |---|---|---|---|
-| `ROUTINE_LOCAL` | translations, batches, formatting | Ollama (local) | `prompts/worker-routine.md` |
-| `CODE_FAST` | syntax, refactoring, review | Groq / Llama | `prompts/worker-coder.md` |
-| `LOGIC_CORE` | architecture, deep analysis, contested decisions | Gemini (+ a second worker for consensus) | `prompts/worker-logic.md` |
+| `ROUTINE_LOCAL` | translations, batches, formatting | local model | `prompts/worker-routine.md` |
+| `CODE_FAST` | syntax, refactoring, review | fast hosted model | `prompts/worker-coder.md` |
+| `LOGIC_CORE` | architecture, deep analysis, contested decisions | strong reasoning model (+ a second worker for consensus) | `prompts/worker-logic.md` |
 
 Calling a worker:
-- Every call goes through `tools/ask.py <provider> <prompt>`, which provides the cache, the fallback and the journal (rotated above 1 MB).
+- Every call goes through `tools/ask.py <role> <prompt>` (providers and models live in `config/providers.json`), which provides the cache, the fallback and the journal (rotated above 1 MB).
 - A request is `prompts/worker-core.md` plus exactly one role file.
 - Put input data first, wrapped in `<documents>` with one `<document>` per item, and put the task and the question last. Models answer long inputs better when the question comes at the end.
 - Describe the required output format in the instructions and include one example of it. Do not rely on an assistant-message prefill; current Claude models reject it with an HTTP 400 error.

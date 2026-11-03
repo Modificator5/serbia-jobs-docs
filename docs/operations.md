@@ -6,8 +6,8 @@
 npm run verify          # doctor + тесты (хелперы+парсеры) + docs:check
 npm run runAll          # полный дневной цикл = bash tools/daily.sh (logs/daily-YYYY-MM-DD.log)
 npm run scrape:kp       # точечный скрейп (kp / infostud / ho / hw)
-npm run translate       # перевод новых title_sr через кеш professions (ollama)
-npm run enrich          # батч-обогащение: перевод + термины → glossary/job_words
+npm run translate       # перевод новых title_sr через кеш professions (роль ROUTINE_LOCAL)
+npm run enrich          # батч-обогащение: перевод + термины → glossary/job_words (ROUTINE_LOCAL)
 npm run cleanup         # удалить вакансии, невиденные >30 дней (last_seen); флаги --dry/--force
 node tools/backup-db.js [keep=14]   # VACUUM INTO + integrity_check в snapshots/backups/
 npm run export:csv      # снимок snapshots/jobs.csv (бэкап + тесты без сети)
@@ -15,7 +15,7 @@ npm run export:json     # публичный jobs.json
 npm run viewer          # локальный сайт http://127.0.0.1:7788
 npm run publish:telegram -- [N] [--dry]   # Telegram-публикация карточек
 node tools/memory.js search "запрос [тег]"   # память задач
-./tools/ask.py <gemini|groq|ollama|openrouter|claude> "промпт"   # воркеры
+./tools/ask.py <ROUTINE_LOCAL|CODE_FAST|LOGIC_CORE> "промпт"   # воркеры (провайдеры — config/providers.json)
 ```
 
 ## Цикл

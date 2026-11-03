@@ -48,8 +48,8 @@ run scrape:hw   node scrapers/helloworld.js 3
 # Фиксируем, всё ли в порядке к этому моменту (копия + парсеры), до разрушающего шага.
 SAFE_TO_CLEAN=$FAILED
 
-run translate   node tools/translate-titles.js ollama 70
-run enrich      node tools/batch-enrich.js ollama 20
+run translate   node tools/translate-titles.js ROUTINE_LOCAL 70
+run enrich      node tools/batch-enrich.js ROUTINE_LOCAL 20
 if [ "$SAFE_TO_CLEAN" -eq 0 ]; then
   run cleanup   node tools/cleanup.js 30
 else

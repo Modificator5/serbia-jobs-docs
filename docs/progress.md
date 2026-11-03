@@ -122,3 +122,17 @@ HaloOglasi/HelloWorld; публичная витрина сместилась с
 - Новый `tools/validators.js`: `isValidTitleRu`, `isValidDefinition`.
 - Подключены в `batch-enrich` и `translate-titles` до записи в БД.
 - Тест: `tests/validators.test.js`, включён в `npm test`.
+
+## 2026-11-03 — T1: слой ask по ролям
+
+- `tools/ask.py` переписан: роли вместо моделей, адаптеры OpenAI-compatible и
+  Anthropic, конфиг `config/providers.json`, кеш с ротацией, журнал
+  `logs/ask-journal.jsonl` (ротация 1 МБ), повтор при нарушении формата, fallback
+  по цепочке, `--allow-external` (по умолчанию внешние провайдеры не вызываются),
+  `--no-cache`, `--tags/--origin/--expect/--timeout/--volatile`.
+- `tools/memory.js`: поиск по задачам и журналу, пропуск истёкших `volatile`,
+  exit 0 при отсутствии совпадений, `context` (до 3 обменов, обрезка).
+- Дефолты `daily.sh`, `translate-titles`, `batch-enrich`, `ai.js` переведены на
+  роль `ROUTINE_LOCAL`; `.env.example` больше не задаёт модели.
+- Тесты: `tests/ask.test.js` (stub-провайдер, кеш, повтор, fallback, журнал,
+  локальность), `tests/memory.test.js`; оба в `npm test`.

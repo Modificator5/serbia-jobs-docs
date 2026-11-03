@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Перевод должностей: берёт только НЕпереведённые title_sr, пачками просит
-// воркер (ollama/gemini), кладёт в кэш professions (title_sr → title_ru)
+// воркер (роль ROUTINE_LOCAL), кладёт в кэш professions (title_sr → title_ru)
 // и проставляет jobs.title_ru. Повторные запуски трогают только новое.
-// Запуск: node tools/translate-titles.js [ollama|gemini] [размер_пачки=70]
+// Запуск: node tools/translate-titles.js [роль] [размер_пачки=70]
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -10,7 +10,7 @@ const { openDb } = require("../scrapers/db");
 const { ask, normalizeWorkerJson } = require("./ai");
 const { isValidTitleRu } = require("./validators");
 
-const PROVIDER = process.argv[2] || "ollama";
+const PROVIDER = process.argv[2] || "ROUTINE_LOCAL";
 const BATCH = parseInt(process.argv[3] || "70", 10);
 const MAX_GLOSSARY_EXAMPLES = 5;
 

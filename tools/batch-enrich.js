@@ -5,7 +5,7 @@ const { openDb } = require("../scrapers/db");
 const { ask, normalizeWorkerJson } = require("./ai");
 const { isValidTitleRu, isValidDefinition } = require("./validators");
 
-const PROVIDER = process.argv[2] || "ollama";
+const PROVIDER = process.argv[2] || "ROUTINE_LOCAL";
 const BATCH_SIZE = parseInt(process.argv[3] || "20", 10);
 
 // Данные идут ПЕРВЫМИ, задача и формат — последними: модели лучше отвечают

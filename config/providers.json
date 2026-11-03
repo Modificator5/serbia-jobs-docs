@@ -1,0 +1,59 @@
+{
+  "providers": {
+    "ollama": {
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": "",
+      "format": "openai",
+      "external": false,
+      "default_model": "gemma4:cloud"
+    },
+    "gemini": {
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "api_key_env": "GEMINI_API_KEY",
+      "format": "openai",
+      "external": true,
+      "default_model": "gemini-3.5-flash"
+    },
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "format": "openai",
+      "external": true,
+      "default_model": "meta-llama/llama-3.3-70b-instruct:free"
+    },
+    "groq": {
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key_env": "GROQ_API_KEY",
+      "format": "openai",
+      "external": true,
+      "default_model": "llama-3.3-70b-versatile"
+    },
+    "claude": {
+      "base_url": "https://api.anthropic.com/v1/messages",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "format": "anthropic",
+      "external": true,
+      "default_model": "claude-sonnet-4-5"
+    }
+  },
+  "roles": {
+    "ROUTINE_LOCAL": [
+      { "provider": "ollama", "model": "gemma4:cloud" }
+    ],
+    "CODE_FAST": [
+      { "provider": "groq", "model": "llama-3.3-70b-versatile" },
+      { "provider": "openrouter", "model": "meta-llama/llama-3.3-70b-instruct:free" }
+    ],
+    "LOGIC_CORE": [
+      { "provider": "gemini", "model": "gemini-3.5-flash" },
+      { "provider": "openrouter", "model": "meta-llama/llama-3.3-70b-instruct:free" }
+    ]
+  },
+  "legacy": {
+    "ollama": "ROUTINE_LOCAL",
+    "gemini": "LOGIC_CORE",
+    "groq": "CODE_FAST",
+    "openrouter": "CODE_FAST",
+    "claude": "LOGIC_CORE"
+  }
+}

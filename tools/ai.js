@@ -3,7 +3,7 @@ const { execFileSync } = require("node:child_process");
 
 const ASK = path.join(__dirname, "ask.py");
 
-function ask(prompt, provider = "ollama", timeout = 300000) {
+function ask(prompt, provider = "ROUTINE_LOCAL", timeout = 300000) {
   return execFileSync("python3", [ASK, provider, "-"], {
     input: prompt,
     encoding: "utf8",

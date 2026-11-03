@@ -1,21 +1,25 @@
 #!/usr/bin/env node
-// Индекс задач проекта с тегами (память мозга). Экономия токенов: сначала ищем,
-// что уже делали/пробовали/отклоняли, и только потом генерируем.
+// Индекс памяти: задачи (memory/tasks.jsonl) + журнал обменов (logs/ask-journal.jsonl).
+// Экономия токенов: сначала ищем, что уже делали/спрашивали, и только потом генерируем.
 // Использование:
-//   node tools/memory.js search "термин" [тег]   — поиск по task/tags/refs
-//   node tools/memory.js list [тег]              — все записи (новые первыми)
+//   node tools/memory.js search "термин" [тег]   — поиск по задачам и журналу
+//   node tools/memory.js list [тег]              — задачи (новые первыми)
+//   node tools/memory.js context "термин"        — до 3 прошлых обменов для промпта
 //   node tools/memory.js add SOLVED "задача" [--tags a,b] [--refs path,URL]
 const fs = require("node:fs");
 const path = require("node:path");
 
-const ROOT = path.join(__dirname, "..");
-const MEMORY = path.join(ROOT, "memory", "tasks.jsonl");
+const ROOT = process.env.ASK_ROOT || path.join(__dirname, "..");
+const MEMORY = process.env.MEMORY_FILE || path.join(ROOT, "memory", "tasks.jsonl");
+const JOURNAL = process.env.JOURNAL_FILE || path.join(ROOT, "logs", "ask-journal.jsonl");
 const STATUSES = ["SOLVED", "TRIED", "REJECTED", "PENDING"];
+const MAX_CONTEXT_ENTRIES = 3;
+const MAX_CONTEXT_CHARS = 500;
 
-function load() {
-  if (!fs.existsSync(MEMORY)) return [];
+function readJsonl(file) {
+  if (!fs.existsSync(file)) return [];
   return fs
-    .readFileSync(MEMORY, "utf8")
+    .readFileSync(file, "utf8")
     .split("\n")
     .filter((l) => l.trim())
     .map((l, i) => {
@@ -28,32 +32,94 @@ function load() {
     .filter(Boolean);
 }
 
+function expired(entry) {
+  if (!entry.volatile) return false;
+  const exp = String(entry.volatile);
+  return /^\d{4}-\d{2}-\d{2}$/.test(exp) && exp < new Date().toISOString().slice(0, 10);
+}
+
+function loadTasks() {
+  return readJsonl(MEMORY).map((e) => ({
+    source: "memory",
+    _line: e._line,
+    date: e.date || "",
+    text: `${e.task} ${(e.tags || []).join(" ")} ${(e.refs || []).join(" ")} ${e.status}`,
+    title: `[${e.status}] ${e.date || ""}`,
+    body: e.task || "",
+    tags: e.tags || [],
+    refs: e.refs || [],
+    status: e.status,
+    raw: e,
+  }));
+}
+
+function loadJournal() {
+  return readJsonl(JOURNAL)
+    .filter((e) => !expired(e))
+    .map((e) => ({
+      source: "journal",
+      _line: e._line,
+      date: String(e.ts || "").slice(0, 10),
+      text: `${e.role || ""} ${e.provider || ""} ${e.model_requested || ""} ${(e.tags || []).join(" ")} ${e.prompt || ""} ${e.answer || ""}`,
+      title: `${e.ts || ""} ${e.role || e.provider || ""}`,
+      body: `Q: ${e.prompt || ""}\nA: ${e.answer || ""}`,
+      tags: e.tags || [],
+      refs: [],
+      status: e.outcome,
+      raw: e,
+    }));
+}
+
+function matches(entry, tokens, tag) {
+  if (tag && !(entry.status === tag || (entry.tags || []).includes(tag))) return false;
+  const hay = String(entry.text).toLowerCase();
+  return tokens.every((t) => hay.includes(t));
+}
+
 function printEntry(e) {
   const tags = (e.tags || []).join(", ");
   const refs = (e.refs || []).join(", ");
-  console.log(`[${e.status}] ${e.date} (стр.${e._line}) ${e.task}`);
+  console.log(`${e.title} (${e.source}, запись ${e._line})`);
+  console.log(`    ${e.body.split("\n")[0]}`);
   if (tags) console.log(`    теги: ${tags}`);
   if (refs) console.log(`    refs: ${refs}`);
 }
 
 function search(words, tag) {
-  const entries = load();
+  const entries = [...loadTasks(), ...loadJournal()];
   const tokens = String(words).toLowerCase().split(/\s+/).filter(Boolean);
-  const hits = entries.filter((e) => {
-    if (tag && !(e.status === tag || (e.tags || []).includes(tag))) return false;
-    const hay = `${e.task} ${(e.tags || []).join(" ")} ${(e.refs || []).join(" ")} ${e.status}`.toLowerCase();
-    return tokens.every((t) => hay.includes(t));
-  });
+  const hits = entries.filter((e) => matches(e, tokens, tag));
   if (!hits.length) {
-    console.log(`Совпадений нет (записей в памяти: ${entries.length}). Генерируй заново и запиши результат.`);
-    process.exit(1);
+    console.log(
+      `Совпадений нет (задач: ${loadTasks().length}, журнал: ${loadJournal().length}). ` +
+        "Генерируй заново и запиши результат."
+    );
+    return; // exit 0: отсутствие совпадений — не ошибка
   }
   console.log(`Найдено ${hits.length}:`);
   hits.forEach(printEntry);
 }
 
+// До 3 прошлых обменов, обрезанных до MAX_CONTEXT_CHARS, для вставки в промпт.
+function context(words) {
+  const tokens = String(words || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = loadJournal()
+    .filter((e) => matches(e, tokens, null))
+    .slice(-MAX_CONTEXT_ENTRIES);
+  if (!hits.length) {
+    console.log("Контекст: совпадений нет.");
+    return;
+  }
+  for (const e of hits) {
+    const body =
+      e.body.length > MAX_CONTEXT_CHARS ? `${e.body.slice(0, MAX_CONTEXT_CHARS)}…` : e.body;
+    console.log(`--- ${e.title} ---`);
+    console.log(body);
+  }
+}
+
 function list(tag) {
-  const entries = load().filter((e) => !tag || e.status === tag);
+  const entries = loadTasks().filter((e) => !tag || e.status === tag);
   if (!entries.length) console.log("Память пуста.");
   entries.forEach(printEntry);
 }
@@ -75,7 +141,7 @@ function add(status, task, flags) {
     refs: flags.refs || [],
   };
   fs.mkdirSync(path.dirname(MEMORY), { recursive: true });
-  fs.appendFileSync(MEMORY, JSON.stringify(entry, null) + "\n", "utf8");
+  fs.appendFileSync(MEMORY, JSON.stringify(entry) + "\n", "utf8");
   console.log(`Записано [${status}]: ${task}`);
 }
 
@@ -94,6 +160,10 @@ switch (cmd) {
     if (!rest[0]) { console.error("Укажи поисковые слова"); process.exit(2); }
     search(rest[0], rest[1]);
     break;
+  case "context":
+    if (!rest[0]) { console.error("Укажи поисковые слова"); process.exit(2); }
+    context(rest[0]);
+    break;
   case "list":
     list(rest[0]);
     break;
@@ -101,6 +171,6 @@ switch (cmd) {
     add(rest[0], rest[1], parseFlags(rest.slice(2)));
     break;
   default:
-    console.log("Память задач.\n  search \"слова\" [тег] | list [тег] | add SOLVED \"задача\" [--tags a,b] [--refs x,y]");
+    console.log("Память задач.\n  search \"слова\" [тег] | context \"слова\" | list [тег] | add SOLVED \"задача\" [--tags a,b] [--refs x,y]");
     process.exit(cmd ? 2 : 0);
 }
