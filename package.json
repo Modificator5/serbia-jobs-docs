@@ -21,7 +21,7 @@
     "cleanup": "node tools/cleanup.js",
     "viewer": "node viewer/server.js",
     "check": "node tools/check.js",
-    "test": "node tools/check.js && node tests/parsers.test.js && node tests/publish.test.js",
+    "test": "node tools/check.js && node tests/parsers.test.js && node tests/publish.test.js && node tests/enrich.test.js",
     "doctor": "node tools/doctor.js",
     "docs:check": "node tools/docs-check.js",
     "verify": "node tools/doctor.js && npm test && node tools/docs-check.js",

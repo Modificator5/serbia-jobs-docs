@@ -55,7 +55,7 @@ Infostud / KP / HaloOglasi / HelloWorld
 ```sql
 jobs(id TEXT PK, source, source_url UNIQUE, title_sr, title_ru, city,
      salary_raw, salary_min, salary_max, requirements_short, company_short,
-     snippet, category_tag, posted_at, parsed_at, is_published)
+     snippet, category_tag, posted_at, parsed_at, is_published, enriched_at)
 professions(title_sr PK, title_ru)          -- кеш переводов
 glossary(id, category_id, term UNIQUE, definition, created_at)
 job_words(job_url, word_id, context_snippet, PK(job_url, word_id))
@@ -67,7 +67,9 @@ proizvodnja, zanat, medicina, administracija, prevoz, dostava, poljoprivreda,
 obrazovanje, finansije, marketing, higijena, bezbednost, fizicki, njega, drugo.
 
 Правила: `title_sr` обязателен; `salary_min/max` — числа, остальное в `salary_raw`;
-`raw_text` не хранится. Полная схема: `scrapers/db.js`.
+`raw_text` не хранится. `enriched_at` — маркер батч-обогащения: `batch-enrich`
+берёт только строки с `NULL` и ставит отметку после обработки, поэтому повторный
+запуск не тратит токены на уже обогащённое. Полная схема: `scrapers/db.js`.
 
 ## Стек
 

@@ -139,7 +139,8 @@ function openDb() {
       category_tag TEXT,
       posted_at TEXT,
       parsed_at TEXT NOT NULL,
-      is_published INTEGER DEFAULT 0
+      is_published INTEGER DEFAULT 0,
+      enriched_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_jobs_city ON jobs(city);
     CREATE INDEX IF NOT EXISTS idx_jobs_category ON jobs(category_tag);
@@ -171,6 +172,9 @@ function openDb() {
   const cols = db.prepare("PRAGMA table_info(jobs)").all().map((c) => c.name);
   if (!cols.includes("snippet")) {
     db.exec("ALTER TABLE jobs ADD COLUMN snippet TEXT");
+  }
+  if (!cols.includes("enriched_at")) {
+    db.exec("ALTER TABLE jobs ADD COLUMN enriched_at TEXT");
   }
   return db;
 }
