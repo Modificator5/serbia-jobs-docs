@@ -21,11 +21,12 @@
     "cleanup": "node tools/cleanup.js",
     "viewer": "node viewer/server.js",
     "check": "node tools/check.js",
-    "test": "node tools/check.js && node tests/parsers.test.js",
+    "test": "node tools/check.js && node tests/parsers.test.js && node tests/publish.test.js",
     "doctor": "node tools/doctor.js",
     "docs:check": "node tools/docs-check.js",
     "verify": "node tools/doctor.js && npm test && node tools/docs-check.js",
     "test:parsers": "node tests/parsers.test.js",
-    "publish:telegram": "node tools/publish-telegram.js"
+    "publish:telegram": "node tools/publish-telegram.js",
+    "test:publish": "node tests/publish.test.js"
   }
 }

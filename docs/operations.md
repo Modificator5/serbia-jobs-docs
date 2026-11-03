@@ -34,12 +34,16 @@ Cron (ночь): `bash tools/daily.sh` — flock не даст запустит�
 
 ## Публикация карточек (Telegram)
 
-1. `@BotFather` → `/newbot`; добавить бота админом в канал.
-2. В `.env`: `TELEGRAM_BOT_TOKEN=...`, `TELEGRAM_CHANNEL_ID=-100...`.
-3. `npm run publish:telegram -- 5` — отправляет до 5 новых (`is_published=0`),
-   помечает отправленные, уважает `retry_after` при 429.
-4. Без токена/канала или с `--dry` — только печать (без сети и без пометок).
-5. Автоматической публикации в `daily.sh` нет — канал пишется только явной командой.
+1. `@BotFather` → `/newbot`; добавить бота админом в канал/группу.
+2. В `.env`: `TELEGRAM_BOT_TOKEN=...`, `TELEGRAM_CHANNEL_ID=@username` (или `-100...`).
+3. Проверка прав: `node tools/publish-telegram.js 1 --dry` (печать без сети).
+4. `npm run publish:telegram -- 5` — отправляет до 5 новых (`is_published=0`),
+   помечает отправленные, повторяет ТУ ЖЕ карточку при 429, пишет
+   `logs/publish-YYYY-MM.log`, берёт `logs/.publish.lock` (нет двойной публикации).
+5. Без токена/канала или с `--dry` — только печать (без сети и без пометок).
+6. Автоматической публикации в `daily.sh` нет — канал пишется только явной командой.
+7. Перед реальной отправкой выполняется `getMe`; отказ 401/403 (бот не админ) —
+   остановка. Карточка собирается так, чтобы ссылка не обрезалась.
 
 ## Очистка данных
 
@@ -59,7 +63,9 @@ Cron (ночь): `bash tools/daily.sh` — flock не даст запустит�
 ## Git
 
 - `origin` = приватный `Modificator5/serbia-jobs` — единственный push по умолчанию.
-- `mirror` = публичное `serbia-jobs-docs` — пушить только по явной задаче.
+- `mirror` = публичное `serbia-jobs-docs` — снимок для внешних ИИ, синхронизируется
+  ТОЛЬКО вручную: `git push mirror main docs` (без авто-пуша). Если зеркало не нужно —
+  `git remote remove mirror`, тогда внешним ИИ доступен только приватный репозиторий.
 - В git входят: код, docs, prompts, `tests/`, `memory/`, `tools/`, `viewer/`,
   `index.html`, `.github/`.
 - В git **не входят**: `data/`, `logs/`, `snapshots/`, `jobs.json`, `.env`,
