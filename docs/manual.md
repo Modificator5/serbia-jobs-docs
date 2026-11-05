@@ -362,23 +362,22 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 
 | Что | Статус | Почему |
 |---|---|---|
-| `docs/archive/*` (18 файлов) | historical | Прежние версии документов; канон — в `docs/*.md` |
+| `docs/archive/*` (16 файлов) | historical | Прежние версии документов; канон — в `docs/*.md` |
 | `docs/sources/infostud.md`, `kupujemprodajem.md` | справочное | Разведка площадок; код их не читает |
 | `docs/handoff/2026-11-03-fixes.md` | historical | Handoff завершённых задач |
 | `prompts/BRIEF.md` | опционально | Карточка онбординга для внешнего ИИ |
 | `prompts/START.md` | опционально | Вход для внешнего аналитика |
 | `prompts/lead-engineer.md` | опционально | Протокол оркестратора, не вызывается скриптами |
 | `prompts/ru-sr-translator.md` | не используется | Промпт RU→SR; конвейер переводит SR→RU |
-| `SYSTEM.md` | указатель | Не читается кодом; его backlog отстаёт от `docs/progress.md` |
+| `SYSTEM.md` | указатель | Не читается кодом; актуальный статус — в `docs/progress.md` |
 | `CLAUDE.md` | указатель | Только для Claude |
 | `mirror` remote | вручную | Публичное зеркало docs, авто-пуша нет |
 | `viewer/server.js` | вручную | Не входит в `daily.sh`; нужен для локального сайта |
 | GitHub Pages | не автоматизировано | `jobs.json` не в git; статический деплой не настроен |
 | `logs/`, `data/`, `snapshots/`, `.ai_memory/` | локально | Сознательно исключены из git |
 
-Отдельно: `SYSTEM.md` в разделе Backlog всё ещё пишет, что Telegram «нужен
-токен/канал», хотя публикатор уже работает. Актуальный статус — в
-`docs/progress.md` и `docs/decisions.md`.
+Актуальный статус задач и решений — всегда в `docs/progress.md` и
+`docs/decisions.md`, а не в исторических файлах.
 
 ## 10. Известные пробелы и риски
 
