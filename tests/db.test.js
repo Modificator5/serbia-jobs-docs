@@ -7,7 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "serbia-db-"));
-process.env.JOBS_DB = path.join(TMP, "jobs.db");
+process.env.JOBS_DB = path.join(TMP, "nested", "jobs.db");
 const {
   openDb, upsertJob, isAbroadJob, SCHEMA_VERSION,
 } = require("../scrapers/db");

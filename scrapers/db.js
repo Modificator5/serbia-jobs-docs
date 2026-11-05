@@ -1,7 +1,13 @@
 const { DatabaseSync } = require("node:sqlite");
+const fs = require("node:fs");
 const path = require("path");
 
 const DB_PATH = process.env.JOBS_DB || path.join(__dirname, "..", "data", "jobs.db");
+
+// Каталог БД может отсутствовать в чистом checkout/CI: создаём его до открытия.
+function ensureDbDir() {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+}
 
 const HTML_ENTITIES = {
   amp: "&",
@@ -116,6 +122,7 @@ function parseDateDMY(s) {
 }
 
 function openReadOnlyDb() {
+  ensureDbDir();
   const db = new DatabaseSync(DB_PATH, { readOnly: true });
   db.exec("PRAGMA busy_timeout = 5000;");
   return db;
@@ -139,6 +146,7 @@ function migrate(db) {
 }
 
 function openDb() {
+  ensureDbDir();
   const db = new DatabaseSync(DB_PATH);
   db.exec(`
     PRAGMA journal_mode = WAL;
