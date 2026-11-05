@@ -1,0 +1,98 @@
+name: daily
+
+# Ежедневный парсинг + публикация новых вакансий в Telegram.
+# Расписание: 05:00 UTC = 07:00 Europe/Belgrade (зимой; летом 07:00 CEST).
+# Ручной запуск: Actions -> daily -> Run workflow (можно включить dry_run).
+#
+# Секреты репозитория (Settings -> Secrets and variables -> Actions):
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+#   GROQ_API_KEY, OPENROUTER_API_KEY (перевод новых заголовков)
+# Без них парсинг выполнится, но публикация будет пропущена (dry-run).
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run публикации (без сообщений в Telegram)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  parse-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # БД между запусками: кеш GitHub. restore-keys подхватывает последний
+      # сохранённый снимок, ключ с run_id гарантирует сохранение нового.
+      - name: Restore jobs DB
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: jobs-db-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-
+
+      - name: Scrape sources
+        run: |
+          set -uo pipefail
+          FAILED=0
+          for step in "scrape:kp" "scrape:infostud" "scrape:ho" "scrape:hw"; do
+            echo "::group::$step"
+            if npm run "$step"; then
+              echo "OK $step"
+            else
+              echo "::warning::$step завершился с ошибкой — продолжаем остальные источники"
+              FAILED=1
+            fi
+            echo "::endgroup::"
+          done
+          node tools/source-stats.js || true
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::warning::Часть источников недоступна; публикуем то, что собрали."
+          fi
+
+      - name: Translate new titles
+        run: node tools/translate-titles.js CODE_FAST 25
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Check and export
+        run: |
+          node tools/check.js
+          npm run export:csv
+          npm run export:json
+
+      - name: Publish new vacancies only
+        run: |
+          set -uo pipefail
+          ELIGIBLE=$(node -e "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync('data/jobs.db');const r=db.prepare(\"SELECT COUNT(*) n FROM jobs WHERE is_published=0 AND title_ru IS NOT NULL AND TRIM(title_ru)<>'' AND TRIM(title_sr)<>''\").get();console.log(r.n);db.close()")
+          echo "Новых подходящих вакансий: $ELIGIBLE"
+          if [ "$ELIGIBLE" -gt 0 ]; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              npm run publish:telegram -- --dry
+            else
+              npm run publish:telegram -- --all
+            fi
+          else
+            echo "Нет новых вакансий — публикация пропущена."
+          fi
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}

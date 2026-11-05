@@ -14,7 +14,7 @@ node tools/source-stats.js          # счётчики по источникам
 npm run export:csv      # снимок snapshots/jobs.csv: атомарная запись, защита от CSV-формул
 npm run export:json     # публичный jobs.json
 npm run viewer          # локальный сайт http://127.0.0.1:7788
-npm run publish:telegram -- [N] [--dry]   # Telegram-публикация карточек
+npm run publish:telegram -- [N] [--dry] [--all]   # Telegram-публикация карточек; --all — все eligible без лимита
 node tools/memory.js search "запрос [тег]"   # память задач
 ./tools/ask.py <ROUTINE_LOCAL|CODE_FAST|LOGIC_CORE> "промпт"   # воркеры (провайдеры — config/providers.json)
 ```
@@ -24,6 +24,17 @@ node tools/memory.js search "запрос [тег]"   # память задач
 Локально: `daily.sh` (парсинг → перевод → обогащение → очистка → экспорт → check).
 Cron (ночь): `bash tools/daily.sh` — лок `logs/.daily.lock.d` (mkdir, без flock) не даст запуститься дважды; код возврата
 отражает упавшие шаги. Сырой прогон всех источников: редкое событие по явной команде.
+
+Облако: `.github/workflows/daily.yml` — ежедневно 05:00 UTC (07:00 Белград)
+запускает четыре парсера, перевод `CODE_FAST`, `check`/экспорт и публикует новые
+карточки в Telegram (`--all`) только если есть подходящие `is_published = 0`
+с непустым `title_ru`. БД между запусками живёт в кеше GitHub (`jobs-db-*`).
+Секреты: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `GROQ_API_KEY`,
+`OPENROUTER_API_KEY` (опционально `GEMINI_API_KEY`). Ручной запуск —
+Actions → daily → Run workflow (есть `dry_run`).
+
+Важно: облачная и локальная БД — разные копии, `is_published` между ними не
+синхронизируется. Выбери один центр публикации, иначе возможны дубли.
 
 ## Тесты и CI
 
@@ -43,7 +54,9 @@ Cron (ночь): `bash tools/daily.sh` — лок `logs/.daily.lock.d` (mkdir, �
    помечает отправленные, повторяет ТУ ЖЕ карточку при 429, пишет
    `logs/publish-YYYY-MM.log`, берёт `logs/.publish.lock` (нет двойной публикации).
 5. Без токена/канала или с `--dry` — только печать (без сети и без пометок).
-6. Автоматической публикации в `daily.sh` нет — канал пишется только явной командой.
+6. Автоматической публикации в `daily.sh` нет — канал пишется только явной
+   командой. Облачная публикация — только в `.github/workflows/daily.yml`
+   после успешного парсинга и перевода (см. раздел «Цикл»).
 7. Перед реальной отправкой выполняется `getMe`; отказ 401/403 (бот не админ) —
    остановка. Карточка собирается так, чтобы ссылка не обрезалась.
 

@@ -78,7 +78,7 @@ obrazovanje, finansije, marketing, higijena, bezbednost, fizicki, njega, drugo.
 
 ## Стек
 
-- Node.js >= 22.5, `node:sqlite`, без npm-зависимостей.
+- Node.js >= 22.13, `node:sqlite`, без npm-зависимостей.
 - `curl` для площадок с TLS-защитой от обычного fetch.
 - Python 3 для AI-моста `tools/ask.py`.
 - GitHub: приватный `origin` (основной) + публичное зеркало docs `mirror` (по явной задаче).

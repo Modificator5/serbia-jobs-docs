@@ -12,6 +12,7 @@
 | [agents.md](agents.md) | current | ИИ-провайдеры, промпты, журнал вызовов |
 | [onboarding.md](onboarding.md) | current | Вход для внешних ИИ (Claude/ChatGPT) |
 | [progress.md](progress.md) | current | Текущее состояние + история |
+| [manual.md](manual.md) | current | Сквозная инструкция: конвейер, файлы, автоматизация, что не используется |
 | [glossary/bazaznanja.txt](glossary/bazaznanja.txt) | current | Личная база словаря (данные) |
 | [sources/infostud.md](sources/infostud.md) | current | Разведка Infostud |
 | [sources/kupujemprodajem.md](sources/kupujemprodajem.md) | current | Разведка KupujemProdajem |

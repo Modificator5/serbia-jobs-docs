@@ -27,8 +27,9 @@
 
 ## Backlog (актуальное)
 
-1. Telegram-публикация — инструмент готов, нужен токен/канал.
+1. Telegram-публикация — инструмент готов и работает (`publish:telegram`).
 2. Новые источники: poslovi.rs, oglasi.rs, lakodoposla.com — см. `docs/sources.md`.
 3. NLP-фильтр и локальная лемматизация.
 4. Тесты парсеров — фикстуры в `tests/parsers.test.js`.
 5. Ротация `logs/ask-journal.jsonl` — реализована (> 1 МБ → `logs/archive/`).
+6. Ежедневная облачная автоматизация — `.github/workflows/daily.yml` (см. `docs/manual.md`).

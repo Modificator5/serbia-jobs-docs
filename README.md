@@ -4,10 +4,11 @@
 
 Правила проекта (для людей и ИИ): [`AGENTS.md`](AGENTS.md) — конституция.
 Индекс документов: [`docs/README.md`](docs/README.md).
+Сквозная инструкция «от и до»: [`docs/manual.md`](docs/manual.md).
 
 ## Технический стек
 
-- **Node.js >= 22.5** (встроенный `node:sqlite`, без npm-зависимостей).
+- **Node.js >= 22.13** (встроенный `node:sqlite`, без npm-зависимостей).
 - **SQLite**: `data/jobs.db` — вакансии, `professions` (кеш переводов) и глоссарий.
 - **AI-слой**: `tools/ask.py` (Gemini, OpenRouter, Groq, Ollama, Claude).
 - **Витрина**: Telegram-канал (`tools/publish-telegram.js`); локальный сайт
@@ -55,6 +56,10 @@ npm run publish:telegram  # публикация карточек (DRY без т
 ## CI и публикация
 
 `.github/workflows/verify.yml` запускает `npm run verify` на каждый push/PR.
-Публикация карточек: `npm run publish:telegram` (нужны `TELEGRAM_BOT_TOKEN` и
-`TELEGRAM_CHANNEL_ID` в `.env`; без них — dry-run). Подробнее:
-`docs/operations.md`.
+`.github/workflows/daily.yml` раз в день (05:00 UTC) парсит источники, переводит
+новые заголовки и публикует новые карточки в Telegram. Для облачного запуска
+нужны секреты репозитория `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
+`GROQ_API_KEY`, `OPENROUTER_API_KEY` (см. `docs/manual.md`).
+Публикация карточек вручную: `npm run publish:telegram -- --all` (нужны
+`TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHANNEL_ID` в `.env`; без них — dry-run).
+Подробнее: `docs/operations.md`.
