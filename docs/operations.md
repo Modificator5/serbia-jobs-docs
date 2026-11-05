@@ -11,7 +11,7 @@ npm run enrich          # батч-обогащение: перевод + тер
 npm run cleanup         # удалить вакансии, невиденные >30 дней (last_seen); флаги --dry/--force
 node tools/backup-db.js [keep=14]   # VACUUM INTO + integrity_check в snapshots/backups/
 node tools/source-stats.js          # счётчики по источникам + warning о просадке (<50% от 7-дневного среднего)
-npm run export:csv      # снимок snapshots/jobs.csv: атомарная запись, защита от CSV-формул
+npm run export:snapshot # снимок snapshots/jobs.csv: атомарная запись, защита от CSV-формул
 npm run export:json     # публичный jobs.json
 npm run viewer          # локальный сайт http://127.0.0.1:7788
 npm run publish:telegram -- [N] [--dry] [--all]   # Telegram-публикация карточек; --all — все eligible без лимита

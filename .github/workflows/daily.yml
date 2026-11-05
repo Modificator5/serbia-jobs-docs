@@ -67,7 +67,7 @@ jobs:
           fi
 
       - name: Translate new titles
-        run: node tools/translate-titles.js CODE_FAST 25
+        run: node tools/translate-titles.js CODE_FAST 15 20000
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -76,7 +76,7 @@ jobs:
       - name: Check and export
         run: |
           node tools/check.js
-          npm run export:csv
+          node tools/export-csv.js
           npm run export:json
 
       - name: Publish new vacancies only

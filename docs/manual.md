@@ -208,7 +208,7 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 - восстанавливает `data/` из кеша GitHub (`actions/cache`, ключ `jobs-db-*`);
 - запускает четыре парсера и `source-stats`;
 - переводит новые заголовки ролью `CODE_FAST`;
-- делает `check`, `export:csv`, `export:json`;
+- делает `check`, `export:snapshot`, `export:json`;
 - публикует в Telegram **только если есть новые подходящие вакансии**
   (`is_published = 0` + непустой `title_ru`), командой
   `npm run publish:telegram -- --all`;
@@ -388,7 +388,12 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
   Если ИИ-провайдеры недоступны, новые вакансии останутся в БД, но не уйдут в
   Telegram.
 - **Сеть площадок.** Любая площадка может сменить разметку или включить защиту;
-  `source-stats` предупредит о просадке, но не починит парсер.
+  `source-stats` предупредит о просадке, но не починит парсер. В частности,
+  HaloOglasi отдаёт `403` облачным раннерам GitHub (datacenter IP), поэтому в
+  облаке этот источник может пропускаться; остальные продолжают работать.
+- **Лимиты ИИ-провайдеров.** Бесплатный Groq ограничивает токены в минуту
+  (TPM). Переводчик делает паузу между пачками (`translate-titles.js <роль>
+  <пачка> <мс>`); при 429 `ask.py` повторяет запрос, затем переходит к fallback.
 - **Telegram-лимиты.** Массовая публикация `--all` идёт с паузой ~1.1 с; при
   сотнях карточек это долго, а при 429 публикатор повторяет ту же карточку.
 - **Бэкапы только локальные.** `snapshots/backups/` не уезжает с машины.
@@ -411,7 +416,7 @@ node tools/translate-titles.js CODE_FAST 25
 npm run enrich
 npm run import:glossary
 npm run cleanup -- --dry
-npm run export:csv
+npm run export:snapshot
 npm run export:json
 npm run viewer                  # http://127.0.0.1:7788
 npm run publish:telegram -- --all

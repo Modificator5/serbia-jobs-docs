@@ -81,6 +81,10 @@ def clip(text: str, n: int = MAX_PROMPT_CHARS) -> str:
 def http_json(url: str, payload: dict, headers: dict, timeout: float,
               retries: int = 3) -> dict:
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    # Cloudflare у Groq/OpenRouter отвечает 403/1010 на пустой User-Agent;
+    # представляемся обычным клиентом, чтобы запросы из CI не блокировались.
+    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                            "(KHTML, like Gecko) Chrome/131.0 Safari/537.36", **headers}
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     last_err = None
     for attempt in range(retries):
@@ -91,6 +95,10 @@ def http_json(url: str, payload: dict, headers: dict, timeout: float,
                 raw = resp.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "replace")[:500]
+            if e.code == 429 and attempt < retries - 1:
+                last_err = f"HTTP 429 (повтор {attempt + 1}/{retries})"
+                time.sleep(min(10 * (attempt + 1), max(0, timeout)))
+                continue
             if e.code in (429, 503) and attempt < retries - 1:
                 last_err = f"HTTP {e.code} (повтор {attempt + 1}/{retries})"
                 time.sleep(min(3 * (attempt + 1), max(0, timeout)))

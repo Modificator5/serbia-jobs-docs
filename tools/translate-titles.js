@@ -12,7 +12,14 @@ const { isValidTitleRu } = require("./validators");
 
 const PROVIDER = process.argv[2] || "ROUTINE_LOCAL";
 const BATCH = parseInt(process.argv[3] || "70", 10);
+const DELAY_MS = parseInt(process.argv[4] || "0", 10);
 const MAX_GLOSSARY_EXAMPLES = 5;
+
+// Синхронная пауза между пачками: бесплатные провайдеры ограничивают TPM,
+// и без неё вторая пачка получает 429 ещё до ответа.
+function sleepSync(ms) {
+  if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
 
 function readPrompt(...files) {
   return files.map((f) => fs.readFileSync(path.join(__dirname, "../prompts", f), "utf8")).join("\n");
@@ -125,6 +132,7 @@ function main() {
     let done = 0;
     let failed = 0;
     for (let i = 0; i < pending.length; i += BATCH) {
+      if (i > 0) sleepSync(DELAY_MS);
       const batch = pending.slice(i, i + BATCH);
       const prompt = buildPrompt(batch, selectGlossaryExamples(db, batch));
       let data = null;

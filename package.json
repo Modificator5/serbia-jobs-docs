@@ -17,6 +17,7 @@
     "enrich": "node tools/batch-enrich.js",
     "import:glossary": "node tools/import-glossary.js",
     "export:snapshot": "node tools/export-csv.js",
+    "export:csv": "node tools/export-csv.js",
     "export:json": "node tools/export-json.js",
     "cleanup": "node tools/cleanup.js",
     "viewer": "node viewer/server.js",

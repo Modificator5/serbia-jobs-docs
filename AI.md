@@ -7,7 +7,7 @@
 | Ключ | Назначение | Модели (примеры) |
 |---|---|---|
 | `LOGIC_CORE` | Глубокий анализ, архитектура, аудит | DeepSeek V3, Claude 3.5 Sonnet, GPT-4o |
-| `CODE_FAST` | Скорость, синтаксис, правки | Llama 3.3 (Groq) |
+| `CODE_FAST` | Скорость, синтаксис, правки | GPT-OSS 120B (Groq) |
 | `ROUTINE_LOCAL` | Простые переводы, форматирование, локальные задачи | Ollama (gemma4:cloud) |
 
 Порядок и `external` флаги — в `config/providers.json`.
