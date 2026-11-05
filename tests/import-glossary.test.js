@@ -32,9 +32,12 @@ try {
 
   assert.equal(run().status, 0);
   let db = new DatabaseSync(DB, { readOnly: true });
-  const terms = db.prepare("SELECT term, definition FROM glossary ORDER BY term").all();
+  const terms = db.prepare("SELECT term, translation_ru, definition, source FROM glossary ORDER BY term").all();
   assert.deepEqual(terms.map((t) => t.term), ["konobar", "kuvar"]);
   assert.equal(terms.find((t) => t.term === "kuvar").definition, "повар");
+  assert.equal(terms.find((t) => t.term === "kuvar").translation_ru, "повар");
+  assert.equal(terms.find((t) => t.term === "konobar").translation_ru, "официант");
+  assert.ok(terms.every((t) => t.source === "manual"));
   db.close();
 
   // Повтор: ни одного нового термина.

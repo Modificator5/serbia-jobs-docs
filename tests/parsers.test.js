@@ -87,6 +87,34 @@ assert.equal(hwJobs[0].requirements_short, "puno radno vreme");
 assert.equal(hwJobs[0].company_short, "Firma");
 assert.equal(hwJobs[0].posted_at, null);
 
+// --- Полный текст вакансии с детальной страницы ---
+const infostudDetail = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+  props: { pageProps: { job: {
+    textAd: "<p>Potreban konobar.</p><ul><li>Rad u smenama</li></ul>",
+    jobSummary: { summary: "Kratko" },
+  } } },
+})}</script>`;
+assert.match(infostud.extractDescription(infostudDetail), /Rad u smenama/);
+
+const hwDetail = `<div class="prose dark:prose-dark mtc-description __mtc-description">
+  <p>Opis posla za programera.</p><p>Rad sa bazama podataka.</p>
+</div><div data-tab="impression">рейтинг</div>`;
+assert.match(hw.extractDescription(hwDetail), /Rad sa bazama podataka/);
+
+const haloDetail = `<script>var ad = {"TextHtml":"<p>Opis posla: rad u kuhinji.</p><p>Higijena.</p>",
+  "OtherFields":{"napomena_s":"<p>Prijava do petka.</p>"}};</script>`;
+const haloDesc = halo.extractDescription(haloDetail);
+assert.match(haloDesc, /rad u kuhinji/);
+assert.match(haloDesc, /Prijava do petka/);
+
+const { extractGenericDescription, extractJsonStringField } = require("../scrapers/common");
+const ldHtml = `<script type="application/ld+json">${JSON.stringify({
+  "@context": "https://schema.org", "@type": "JobPosting",
+  description: "Tražimo vozaca sa iskustvom. Potrebna B kategorija.",
+})}</script>`;
+assert.match(extractGenericDescription(ldHtml), /B kategorija/);
+assert.equal(extractJsonStringField('{"TextHtml":"<p>a</p>"}', "TextHtml"), "<p>a</p>");
+
 // --- Фильтр зарубежных вакансий (поле city) ---
 const { isAbroadJob } = require("../scrapers/db");
 assert.equal(isAbroadJob({ city: "Kipar - Svi gradovi" }), true);

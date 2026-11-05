@@ -24,9 +24,23 @@ try {
   assert.ok(idx.includes("idx_jobs_parsed_at"));
   assert.ok(idx.includes("idx_jobs_source"));
   assert.ok(idx.includes("idx_glossary_term_nocase"));
+  assert.ok(idx.includes("idx_glossary_source"));
+
+  // Новые поля схемы: полный текст, метаданные публикации, словарь.
+  const jobCols = db.prepare("PRAGMA table_info(jobs)").all().map((c) => c.name);
+  for (const col of ["description", "published_at", "telegram_message_id"]) {
+    assert.ok(jobCols.includes(col), `jobs.${col}`);
+  }
+  const glossaryCols = db.prepare("PRAGMA table_info(glossary)").all().map((c) => c.name);
+  for (const col of ["translation_ru", "source", "part_of_speech", "level", "example_sr"]) {
+    assert.ok(glossaryCols.includes(col), `glossary.${col}`);
+  }
 
   // Коллизия URL: вторая вакансия уже заняла u2; upsert первой не должен падать.
+  assert.equal(upsertJob(db, base("1", "u1", { description: "Полный текст вакансии" })), true);
+  // Повторный листинг без description не должен стирать уже сохранённый текст.
   assert.equal(upsertJob(db, base("1", "u1")), true);
+  assert.equal(db.prepare("SELECT description FROM jobs WHERE id = '1'").get().description, "Полный текст вакансии");
   assert.equal(upsertJob(db, base("2", "u2")), true);
   assert.equal(upsertJob(db, base("1", "u2", { title_sr: "Novi naslov" })), true);
   const rows = db.prepare("SELECT id, source_url, title_sr FROM jobs ORDER BY id").all();

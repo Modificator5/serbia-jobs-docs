@@ -172,3 +172,34 @@ HaloOglasi/HelloWorld; публичная витрина сместилась с
 - `translate-titles.js`: пауза между пачками (`<роль> <пачка> <мс>`) против TPM.
 - Проверено: облачный dry-run собрал 239 вакансий и перевёл 202; реальный
   запуск опубликовал 228/228 карточек. HaloOglasi из облака отдаёт 403.
+
+## 2026-11-05 — журнал, словарь из полных текстов, проверочные шаги
+
+- `journal/`: курируемый журнал (`events.jsonl`, `sessions/YYYY-MM-DD.md`) —
+  в git, `tools/journal.js` (add/ingest/search/list/stats). `ingest` переводит
+  сырой `logs/ask-journal.jsonl` в `events.jsonl`, дедуп по hash, только
+  `accepted`; авто-теги (`translation`, `glossary`, `scraping`, `telegram`, ...).
+- `tools/memory.js`: ищет `memory/tasks.jsonl`, `journal/events.jsonl` и сырой
+  журнал; вывод ответа (A) в `printEntry`.
+- `scrapers/db.js`: схема v3 — `jobs.description`, `published_at`,
+  `telegram_message_id`; `glossary.translation_ru`, `source`, `part_of_speech`,
+  `level`, `example_sr`. Idempotent миграции.
+- `scrapers/common.js`: `extractGenericDescription`, `extractJsonLdJob`,
+  `extractJsonStringField`, `fetchDescription`, `newJobsOnly`, `attachDescriptions`.
+- Парсеры: Infostud, HelloWorld, HaloOglasi получают детальные страницы и
+  сохраняют полный текст. HelloWorld: блок `mtc-description`.
+- `tools/fetch-descriptions.js`: добор пропусков по `description IS NULL` (по 40
+  за прогон, `--source`).
+- `tools/batch-enrich.js`: из `title + snippet + description` — термины с
+  переводом, определением, частью речи, уровнем, примером и контекстом в
+  `job_words`; `source='ai'` для новых терминов.
+- `tools/export-glossary.js`: читаемый `snapshots/glossary.md` из БД.
+- `tools/publish-telegram.js`: `published_at` + `telegram_message_id` проставляются
+  отправке.
+- Проверки: `tools/verify-publish.js`, `tools/verify-glossary.js`, тесты
+  `tests/verify.test.js`, `tests/journal.test.js`; все входят в `npm test` и
+  `npm run verify`.
+- `.github/workflows/daily.yml`: шаги fetch-descriptions, enrich (`CODE_FAST`,
+  батч 10), export:glossary, journal ingest, verify; upload-artifact для БД.
+- `daily.sh`: шаги fetch-descriptions, export:glossary, journal ingest.
+- Миграция локальной БД: user_version 3, дубли словаря по регистру склеены.

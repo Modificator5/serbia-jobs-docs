@@ -111,12 +111,11 @@ async function query(token, method, payload) {
 async function sendCard(token, chat, text) {
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      await query(token, "sendMessage", {
+      return await query(token, "sendMessage", {
         chat_id: chat,
         text,
         link_preview_options: { is_disabled: true },
       });
-      return true;
     } catch (e) {
       if (e.retry && attempt < 3) {
         await new Promise((r) => setTimeout(r, e.retry * 1000));
@@ -219,14 +218,16 @@ async function main() {
     const me = await query(TOKEN, "getMe", {});
     console.log(`Бот: @${me.username}`);
 
-    const mark = db.prepare("UPDATE jobs SET is_published = 1 WHERE id = ?");
+    const mark = db.prepare(
+      "UPDATE jobs SET is_published = 1, published_at = ?, telegram_message_id = ? WHERE id = ?"
+    );
     let sent = 0;
     for (const job of jobs) {
       try {
-        await sendCard(TOKEN, CHANNEL, card(job));
-        mark.run(job.id);
+        const message = await sendCard(TOKEN, CHANNEL, card(job));
+        mark.run(new Date().toISOString(), message?.message_id ?? null, job.id);
         sent++;
-        logPublish(`OK ${job.id} ${job.source_url}`);
+        logPublish(`OK ${job.id} message=${message?.message_id ?? "-"} ${job.source_url}`);
         await new Promise((r) => setTimeout(r, 1100));
       } catch (e) {
         logPublish(`FAIL ${job.id} ${e.message}`);

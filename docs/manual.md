@@ -63,10 +63,24 @@ scrapers/*.js  ──►  data/jobs.db  ──►  translate  ──►  enrich
    - пишет перевод в `professions` и обновляет `jobs.title_ru`.
    Повторный запуск не тратит токены на уже переведённое.
 7. **Обогащение.** `node tools/batch-enrich.js`:
-   - берёт вакансии с `enriched_at IS NULL`;
+   - берёт вакансии с `enriched_at IS NULL` и полным текстом (`description`
+     из `fetch-descriptions` либо `snippet`);
    - просит воркер перевести текст и вытащить термины;
    - пополняет `glossary`, `job_words`, `glossary_categories`;
    - ставит `enriched_at`, поэтому повторно не обрабатывает.
+
+### Полный текст вакансий и словарь
+
+- Парсеры (Infostud, HelloWorld, HaloOglasi) получают детальные страницы и
+  сохраняют `jobs.description`; `tools/fetch-descriptions.js` добирает старые
+  (по `description IS NULL`, по умолчанию 40 за прогон, `--source X`).
+- `tools/batch-enrich.js` собирает `title + snippet + description`, вытаскивает
+  3-6 сербских профессиональных терминов с переводом, определением, частью
+  речи, уровнем CEFR, примером и контекстом (`job_words`).
+- `tools/export-glossary.js` пишет читаемый `snapshots/glossary.md` из БД
+  (ручной seed `docs/glossary/bazaznanja.txt` + термины из вакансий).
+- `node tools/verify-glossary.js` — целостность: сироты `job_words`, дубли
+  терминов, неполные записи.
 8. **Очистка.** `node tools/cleanup.js [дней]` удаляет вакансии, которые не
    показывались в листингах дольше 30 дней (критерий — `parsed_at`, а не
    `posted_at`). Защита: остановившийся источник пропускается целиком; удаление
@@ -89,7 +103,9 @@ scrapers/*.js  ──►  data/jobs.db  ──►  translate  ──►  enrich
       `logs/publish-YYYY-MM.log`;
     - `--all` публикует все подходящие, без `--all` — по умолчанию 5.
 12. **Проверка.** `node tools/check.js` проверяет хелперы и согласованность
-    артефактов; `npm run verify` = `doctor` + все тесты + `docs:check`.
+    артефактов; `npm run verify` = `doctor` + все тесты + `docs:check` +
+    `verify:publish` + `verify:glossary`. `verify-publish`/`verify-glossary`
+    без БД (CI) пропускаются, с `--require-db` — падают.
 
 ## 3. Источники и способы парсинга
 
@@ -111,12 +127,18 @@ scrapers/*.js  ──►  data/jobs.db  ──►  translate  ──►  enrich
 ```sql
 jobs(id TEXT PK, source, source_url UNIQUE, title_sr, title_ru, city,
      salary_raw, salary_min, salary_max, requirements_short, company_short,
-     snippet, category_tag, posted_at, parsed_at, is_published, enriched_at)
+     snippet, description, category_tag, posted_at, parsed_at, is_published,
+     enriched_at, published_at, telegram_message_id)
 professions(title_sr PK, title_ru)          -- кеш переводов
-glossary(id, category_id, term UNIQUE, definition, created_at)
+glossary(id, category_id, term UNIQUE, translation_ru, definition,
+        source, part_of_speech, level, example_sr, created_at)
 job_words(job_url, word_id, context_snippet, PK(job_url, word_id))
 glossary_categories(id, name UNIQUE)
 ```
+
+Полный текст вакансии хранится в `jobs.description` (детальная страница);
+`snippet` — короткая выжимка из листинга. `description` читается
+`tools/fetch-descriptions.js` и `batch-enrich`.
 
 Инварианты:
 
@@ -124,12 +146,15 @@ glossary_categories(id, name UNIQUE)
   `kp-...`, `ho-...`, `hw-...`).
 - `parsed_at` = последний показ в листинге (last_seen). `posted_at` —
   вспомогательная дата публикации; даты из будущего превращаются в `NULL`.
-- `is_published` = 1 только после успешной отправки в Telegram.
+- `is_published` = 1 только после успешной отправки в Telegram;
+  `published_at` и `telegram_message_id` проставляются публикатором.
 - `enriched_at` = маркер обогащения; `NULL` значит «ещё не обрабатывали».
 - `professions` — кеш «один `title_sr` → один `title_ru`»; перевод не теряется
   при повторном скрейпе.
 - `glossary` пополняется только (`INSERT OR IGNORE`), существующие термины не
-  перезаписываются; конфликт термина печатается предупреждением.
+  перезаписываются; конфликт термина печатается предупреждением. Термины из
+  полных текстов добавляются с `source='ai'` (перевод, определение, часть речи,
+  уровень CEFR, пример, контекст). Дубли без учёта регистра — `verify:glossary`.
 
 Теги `category_tag`: ugostiteljstvo, turizam, trgovina, it, gradjevina,
 proizvodnja, zanat, medicina, administracija, prevoz, dostava, poljoprivreda,
@@ -179,7 +204,8 @@ obrazovanje, finansije, marketing, higijena, bezbednost, fizicki, njega, drugo.
   `.ai_memory/<provider>.jsonl`, журнал `logs/ask-journal.jsonl`; поддерживает
   `--allow-external`, `--tags`, `--origin`, `--expect json|text`, `--volatile`.
 - `tools/ai.js` — мост Node → Python: `ask()` и `normalizeWorkerJson()`.
-- `tools/memory.js` — поиск по `memory/tasks.jsonl` и журналу; команды
+- `tools/memory.js` — поиск по `memory/tasks.jsonl`, курируемому журналу
+  `journal/events.jsonl` и сырому `logs/ask-journal.jsonl`; команды
   `search`, `list`, `context`, `add`.
 - Внешний провайдер для локальной роли по умолчанию запрещён; включается только
   явным `--allow-external`.
@@ -192,12 +218,23 @@ obrazovanje, finansije, marketing, higijena, bezbednost, fizicki, njega, drugo.
 
 ```
 backup → glossary → scrape kp → scrape infostud → scrape ho → scrape hw
-→ source-stats → translate → enrich → cleanup → export CSV → export JSON → check
+→ source-stats → fetch-descriptions → translate → enrich → cleanup
+→ export CSV → export JSON → export glossary → journal ingest → check
 ```
 
 Порядок важен: `backup` первым, `cleanup` последним и только если бэкап и все
 парсеры завершились успешно. Лок `logs/.daily.lock.d` не даёт запустить два
 цикла одновременно. Лог: `logs/daily-YYYY-MM-DD.log`.
+
+Шаги после парсеров:
+- `fetch-descriptions` — полные тексты вакансий (`jobs.description`) для
+  словарей и терминов; по 40 за запуск;
+- `export:glossary` — читаемый файл из БД (`snapshots/glossary.md`);
+- `journal ingest` — сырые ответы ИИ из `logs/ask-journal.jsonl` в
+  курируемый `journal/events.jsonl`.
+
+Проверки: `npm run verify` = doctor + test + docs:check + `verify:publish` +
+`verify:glossary`.
 
 ### 7.2 GitHub Actions: ежедневный парсинг + Telegram
 
@@ -207,12 +244,17 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
   (`workflow_dispatch`, есть флаг `dry_run`);
 - восстанавливает `data/` из кеша GitHub (`actions/cache`, ключ `jobs-db-*`);
 - запускает четыре парсера и `source-stats`;
+- запрашивает полные тексты вакансий (`tools/fetch-descriptions.js 40`);
 - переводит новые заголовки ролью `CODE_FAST`;
 - делает `check`, `export:snapshot`, `export:json`;
+- обогащает полные тексты вакансиями ролью `CODE_FAST` (батч 10);
+- делает `check`, `export-glossary`, `journal ingest`, `verify:publish`,
+  `verify:glossary` (без `--require-db` в CI они пропускаются);
 - публикует в Telegram **только если есть новые подходящие вакансии**
   (`is_published = 0` + непустой `title_ru`), командой
-  `npm run publish:telegram -- --all`;
+  `npm run publish-telegram -- --all`;
 - сохраняет обновлённую БД в кеш.
+- выкладывает `snapshots/glossary.md` как артефакт и обновляет кеш.
 
 Секреты репозитория (Settings → Secrets and variables → Actions):
 
@@ -301,6 +343,7 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 | `import-glossary.js` | Импорт `docs/glossary/bazaznanja.txt` |
 | `translate-titles.js` | Перевод `title_sr` → `title_ru` |
 | `batch-enrich.js` | Перевод + термины → `glossary`/`job_words` |
+| `fetch-descriptions.js` | Полные тексты вакансий по `description IS NULL` |
 | `validators.js` | Валидация `title_ru` и определений |
 | `cleanup.js` | Удаление невиденных > N дней, защита от потери |
 | `source-stats.js` | Счётчики и сигнал просадки источника |
@@ -308,6 +351,9 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 | `export-csv.js` | `snapshots/jobs.csv` |
 | `file-utils.js` | Атомарная запись, защита CSV от формул |
 | `publish-telegram.js` | Карточки в Telegram, `--all`, `--dry`, лок |
+| `verify-publish.js` | Проверка публикации: дубли, потери, покрытие |
+| `verify-glossary.js` | Проверка словаря: сироты, дубли, полнота |
+| `export-glossary.js` | Читаемый экспорт словаря из БД |
 
 `viewer/server.js` — локальный HTTP-сервер; не входит в `daily.sh`, запускается
 вручную.
@@ -315,8 +361,9 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 ### `tests/`
 
 16 офлайн-тестов: `check`, `parsers`, `publish`, `enrich`, `translate`,
-`validators`, `ask`, `memory`, `export`, `source-stats`, `db`, `ai`, `backup`,
-`cleanup`, `import-glossary`, `prompts`. Все входят в `npm test`; сеть не нужна.
+`validators`, `ask`, `memory`, `journal`, `export`, `source-stats`, `db`, `ai`,
+`backup`, `cleanup`, `import-glossary`, `verify`, `prompts`. Все входят в
+`npm test`; сеть не нужна.
 
 ### `prompts/`
 
@@ -354,6 +401,20 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 | `snapshots/` | CSV-снимки и бэкапы БД |
 | `jobs.json` | Публичный JSON для сайта |
 | `.env` | Секреты |
+
+### Что минимально попадает в git
+
+- Код, docs, prompts, tests, tools, scrapers, viewer, index.html, .github.
+- `journal/events.jsonl` + `journal/sessions/` — курируемый журнал (машинные
+  события и человеко-читаемые сводки суток). Это в git, сырые логи — нет.
+- `memory/tasks.jsonl` — журнал задач (по конституции AGENTS.md).
+- БД, сырые логи, кэши (`.ai_memory/`), снапшоты (`snapshots/`), `jobs.json`,
+  `.env` — в git не попадают (`.gitignore`).
+
+Минимальная синхронизация с гитом: коммитить только явные пути из списка выше;
+не трогать `data/`, `logs/`, `snapshots/`, `jobs.json`, `.ai_memory/`. База
+`data/jobs.db` локально — бэкап в `snapshots/backups/` + cloud artifact/cache.
+Остальное (код, docs, journal, memory) — обычный `git push origin main`.
 
 ## 9. Что не используется, устарело или является историей
 
@@ -404,12 +465,15 @@ backup → glossary → scrape kp → scrape infostud → scrape ho → scrape h
 ## 11. Быстрый справочник
 
 ```bash
-npm run verify                  # doctor + тесты + docs:check
+npm run verify                  # doctor + тесты + docs:check + verify:publish + verify:glossary
+npm run verify:publish          # только новые, без дублей и потерь
+npm run verify:glossary         # сироты, дубли, полнота словаря
 npm run runAll                  # полный локальный цикл
 npm run scrape:kp               # точечный скрейп
 npm run scrape:infostud
 npm run scrape:ho
 npm run scrape:hw
+npm run fetch:descriptions     # полные тексты вакансий
 npm run translate               # ROUTINE_LOCAL
 node tools/translate-titles.js CODE_FAST 25
 npm run enrich
@@ -417,6 +481,8 @@ npm run import:glossary
 npm run cleanup -- --dry
 npm run export:snapshot
 npm run export:json
+npm run export:glossary         # snapshots/glossary.md
+npm run journal                 # add/ingest/search/…
 npm run viewer                  # http://127.0.0.1:7788
 npm run publish:telegram -- --all
 npm run publish:telegram -- 5 --dry

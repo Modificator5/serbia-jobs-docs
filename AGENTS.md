@@ -46,7 +46,10 @@ Sources, in the order to check them:
    - `TRIED`: attempted and failed (what was tried and why it does not fit).
    - `REJECTED`: deliberately declined (with the reason).
    - `PENDING`: queued.
-2. `logs/ask-journal.md` records what workers were already asked. When a question repeats, build on the earlier answer or refine it instead of generating it again.
+2. `journal/events.jsonl` is the curated question/answer journal (written by
+   `tools/journal.js ingest` from `logs/ask-journal.jsonl`; deduplicated, tagged).
+   `logs/ask-journal.md` is the human-readable worker log. When a question repeats,
+   build on the earlier answer or refine it instead of generating it again.
 3. `.ai_memory/*.jsonl` is the provider answer cache keyed by prompt hash. On a hash match the provider returns the stored answer without a network request.
 
 Search before generating: `node tools/memory.js search "term" [tag]`. The script reads `memory/tasks.jsonl` and quietly does nothing if the file is missing.
@@ -74,8 +77,8 @@ Recording rules:
 
 <git_rules>
 - Stage explicit paths (`git add path/a path/b`). Bulk staging with `git add -A` or `git add .` pulls generated artifacts into history, and removing them afterwards is painful.
-- Tracked in git: code, docs, prompts, configs, `memory/`.
-- Kept out of git: `data/`, `logs/`, `snapshots/`, `jobs.json`, `.env`, `.ai_memory/`. These are generated or secret, so they stay local.
+- Tracked in git: code, docs, prompts, configs, `memory/`, `journal/`.
+- Kept out of git: `data/`, `logs/`, `snapshots/`, `jobs.json`, `.env`, `.ai_memory/`, `*.db*`. These are generated or secret, so they stay local.
 - `origin` is the private main repository. The `mirror` remote is the public mirror `serbia-jobs-docs`; push to it only when the user's task explicitly says so, because anything pushed there becomes public.
 - Commit after each completed task, with a message that states what changed and why.
 - When a task changes structure or architecture, update `docs/architecture.md` and add an entry to `docs/decisions.md` in the same commit.
@@ -143,13 +146,13 @@ A task is done when all five points hold:
 
 <project_map>
 - `scrapers/`: one parser per job board, plus `common.js` and `db.js`
-- `tools/`: export, translation, enrichment, cleanup, Telegram, `ask.py`, `memory.js`, `doctor.js`, `docs-check.js`
+- `tools/`: export, translation, enrichment, cleanup, Telegram, `ask.py`, `memory.js`, `journal.js`, `doctor.js`, `docs-check.js`
 - `tests/`: offline parser tests on fixtures (`parsers.test.js`)
 - `viewer/server.js` + `index.html`: local site (127.0.0.1:7788)
 - `docs/`: canonical documents (index in `docs/README.md`)
 - `prompts/`: instructions: `lead-engineer.md`, `worker-core.md`, and the role files (`worker-logic.md`, `worker-coder.md`, `worker-routine.md`)
 - `memory/tasks.jsonl`: tagged task index (memory)
-- `logs/`: journals (local, not in git)
+- `journal/`: curated events + session summaries (in git, unlike logs)
 - `data/jobs.db`: the single source of truth for vacancies (local)
 - `.github/workflows/verify.yml`: CI that runs `npm run verify` on push and pull request
 

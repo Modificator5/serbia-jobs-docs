@@ -5,8 +5,11 @@
 // сниппетов (posted_at/snippet = null); есть компания и город.
 // Запуск: node scrapers/halooglasi.js
 
-const { openDb, categoryTag } = require("./db");
-const { fetchHtml, saveJobs, report } = require("./common");
+const { openDb, categoryTag, cleanText } = require("./db");
+const {
+  fetchHtml, extractJsonStringField, extractGenericDescription,
+  newJobsOnly, attachDescriptions, saveJobs, report,
+} = require("./common");
 
 const BASE = "https://www.halooglasi.com";
 const PAGE = `${BASE}/posao`;
@@ -38,6 +41,17 @@ function cleanCity(city) {
   return city;
 }
 
+// Полный текст объявления — в JSON-поле TextHtml (а не в JSON-LD: там
+// только первый абзац). Дополнительные поля вроде napomena_s добавляем,
+// если основной текст короткий.
+function extractDescription(html) {
+  const main = cleanText(extractJsonStringField(html, "TextHtml"));
+  const note = cleanText(extractJsonStringField(html, "napomena_s"));
+  const text = [main, note].filter(Boolean).join(" ");
+  if (text.length >= 40) return text;
+  return extractGenericDescription(html);
+}
+
 function mapAd(ad) {
   const url = ad.url.replace(/\?kid=1$/, "");
   return {
@@ -61,7 +75,14 @@ async function main() {
   const html = fetchHtml(PAGE, HEADERS);
   const ads = extractAds(html);
   if (!ads.length) throw new Error("ни одного объявления — изменилась вёрстка?");
-  const stats = saveJobs(db, ads.map(mapAd));
+  const mapped = ads.map(mapAd);
+  const desc = await attachDescriptions(
+    newJobsOnly(db, mapped),
+    (job) => extractDescription(fetchHtml(job.source_url, HEADERS)),
+    { limit: 30 }
+  );
+  if (desc.filled) console.log(`descriptions: ${desc.filled}/${desc.attempted}`);
+  const stats = saveJobs(db, mapped);
   report(db, "halooglasi", stats);
   db.close();
 }
@@ -73,4 +94,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { extractAds, cleanCity, mapAd };
+module.exports = { extractAds, cleanCity, mapAd, extractDescription };

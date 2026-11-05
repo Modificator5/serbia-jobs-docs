@@ -66,6 +66,9 @@ jobs:
             echo "::warning::Часть источников недоступна; публикуем то, что собрали."
           fi
 
+      - name: Fetch full job descriptions
+        run: node tools/fetch-descriptions.js 40 || true
+
       - name: Translate new titles
         run: node tools/translate-titles.js CODE_FAST 15 20000
         env:
@@ -73,11 +76,21 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
+      - name: Enrich full texts for the glossary
+        run: node tools/batch-enrich.js CODE_FAST 10 || true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
       - name: Check and export
         run: |
           node tools/check.js
           node tools/export-csv.js
           npm run export:json
+          node tools/export-glossary.js
+          node tools/journal.js ingest
+          node tools/verify-publish.js || true
+          node tools/verify-glossary.js || true
 
       - name: Publish new vacancies only
         run: |
@@ -96,3 +109,16 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+
+      # Кеш GitHub может быть вытеснен. Артефакт — запасная копия БД,
+      # из которой можно вручную восстановить data/jobs.db.
+      - name: Save DB artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobs-db-${{ github.run_id }}
+          path: |
+            data/jobs.db
+            snapshots/glossary.md
+          retention-days: 14
+          if-no-files-found: warn

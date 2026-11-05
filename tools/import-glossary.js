@@ -24,9 +24,15 @@ function importBazaznanja() {
     const insCategory = db.prepare("INSERT OR IGNORE INTO glossary_categories (name) VALUES (?)");
     const selCategory = db.prepare("SELECT id FROM glossary_categories WHERE name = ?");
     const insTerm = db.prepare(
-      "INSERT OR IGNORE INTO glossary (category_id, term, definition) VALUES (?, ?, ?)"
+      `INSERT OR IGNORE INTO glossary (category_id, term, translation_ru, definition, source)
+       VALUES (?, ?, ?, ?, 'manual')`
     );
-    const selTerm = db.prepare("SELECT definition FROM glossary WHERE term = ? COLLATE NOCASE");
+    const selTerm = db.prepare(
+      "SELECT id, definition, translation_ru FROM glossary WHERE term = ? COLLATE NOCASE"
+    );
+    const fillTranslation = db.prepare(
+      "UPDATE glossary SET translation_ru = COALESCE(translation_ru, ?) WHERE id = ?"
+    );
 
     let currentCategory = "Общее";
     let inserted = 0;
@@ -58,11 +64,13 @@ function importBazaznanja() {
         insCategory.run(currentCategory);
         const catId = selCategory.get(currentCategory).id;
 
-        if (insTerm.run(catId, sr, definition).changes) {
+        if (insTerm.run(catId, sr, ru, definition).changes) {
           inserted++;
         } else {
           skipped++;
           const have = selTerm.get(sr);
+          // Термин мог прийти из ИИ без перевода — ручной файл его дополняет.
+          if (have && !have.translation_ru) fillTranslation.run(ru, have.id);
           if (have && have.definition !== definition) {
             conflicts.push(`"${sr}" [${currentCategory}]: в базе «${have.definition}», в файле «${definition}»`);
           }

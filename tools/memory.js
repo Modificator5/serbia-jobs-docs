@@ -12,6 +12,7 @@ const path = require("node:path");
 const ROOT = process.env.ASK_ROOT || path.join(__dirname, "..");
 const MEMORY = process.env.MEMORY_FILE || path.join(ROOT, "memory", "tasks.jsonl");
 const JOURNAL = process.env.JOURNAL_FILE || path.join(ROOT, "logs", "ask-journal.jsonl");
+const EVENTS = process.env.JOURNAL_EVENTS || path.join(ROOT, "journal", "events.jsonl");
 const STATUSES = ["SOLVED", "TRIED", "REJECTED", "PENDING"];
 const MAX_CONTEXT_ENTRIES = 3;
 const MAX_CONTEXT_CHARS = 500;
@@ -70,6 +71,23 @@ function loadJournal() {
     }));
 }
 
+// Курируемый журнал (journal/events.jsonl) входит в git и дополняет сырой
+// logs/ask-journal.jsonl: короткие записи ищутся быстрее и не дублируются.
+function loadEvents() {
+  return readJsonl(EVENTS).map((e) => ({
+    source: "event",
+    _line: e._line,
+    date: String(e.ts || "").slice(0, 10),
+    text: `${e.type || ""} ${e.title || ""} ${e.question || ""} ${e.text || ""} ${(e.tags || []).join(" ")} ${(e.refs || []).join(" ")}`,
+    title: `[${e.type || "event"}] ${e.title || ""}`,
+    body: `${e.question ? `Q: ${e.question}\n` : ""}A: ${e.text || ""}`,
+    tags: e.tags || [],
+    refs: e.refs || [],
+    status: e.outcome,
+    raw: e,
+  }));
+}
+
 function matches(entry, tokens, tag) {
   if (tag && !(entry.status === tag || (entry.tags || []).includes(tag))) return false;
   const hay = String(entry.text).toLowerCase();
@@ -80,19 +98,20 @@ function printEntry(e) {
   const tags = (e.tags || []).join(", ");
   const refs = (e.refs || []).join(", ");
   console.log(`${e.title} (${e.source}, запись ${e._line})`);
-  console.log(`    ${e.body.split("\n")[0]}`);
+  const lines = String(e.body || "").split("\n").filter((l) => l.trim());
+  lines.forEach((l, i) => console.log(`    ${l}`));
   if (tags) console.log(`    теги: ${tags}`);
   if (refs) console.log(`    refs: ${refs}`);
 }
 
 function search(words, tag) {
-  const entries = [...loadTasks(), ...loadJournal()];
+  const entries = [...loadTasks(), ...loadEvents(), ...loadJournal()];
   const tokens = String(words).toLowerCase().split(/\s+/).filter(Boolean);
   const hits = entries.filter((e) => matches(e, tokens, tag));
   if (!hits.length) {
     console.log(
-      `Совпадений нет (задач: ${loadTasks().length}, журнал: ${loadJournal().length}). ` +
-        "Генерируй заново и запиши результат."
+      `Совпадений нет (задач: ${loadTasks().length}, событий: ${loadEvents().length}, ` +
+        `журнал: ${loadJournal().length}). Генерируй заново и запиши результат.`
     );
     return; // exit 0: отсутствие совпадений — не ошибка
   }

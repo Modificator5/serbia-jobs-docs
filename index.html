@@ -40,18 +40,38 @@
   .src { margin-top:10px; font-size:11px; color:#5c6b7a; }
   .empty { color:var(--muted); padding:48px 16px; text-align:center; }
   .err { color:#e08080; }
+  .tabs { display:flex; gap:6px; }
+  .tabs button { background:transparent; border:1px solid var(--line); color:var(--muted);
+                 padding:5px 10px; border-radius:8px; font:inherit; font-size:13px; cursor:pointer; }
+  .tabs button.active { background:var(--chip); color:#9ecbff; border-color:var(--chip); }
+  .word { background:var(--card); border-radius:12px; padding:12px 16px; margin-bottom:10px; }
+  .word .top { display:flex; gap:10px; align-items:baseline; justify-content:space-between; }
+  .word .term { font-weight:600; font-size:15px; }
+  .word .tr { color:var(--green); }
+  .word .def { margin-top:6px; font-size:13.5px; color:#c9d1d9; }
+  .word .ex { margin-top:6px; font-size:13px; color:var(--muted); font-style:italic; }
+  .word .meta { margin-top:7px; font-size:11px; color:#5c6b7a; display:flex; gap:12px; flex-wrap:wrap; }
+  [hidden] { display:none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
   <h1>Вакансии Сербии</h1>
+  <nav class="tabs">
+    <button id="tab-jobs" class="active" data-view="jobs">Вакансии</button>
+    <button id="tab-glossary" data-view="glossary">Словарь</button>
+  </nav>
   <span class="count" id="count">загрузка…</span>
 </header>
-<div class="bar">
+<div class="bar" id="jobs-bar">
   <input id="q" placeholder="Поиск: должность, город…">
   <select id="city"><option value="">Город</option></select>
   <select id="cat"><option value="">Категория</option></select>
+</div>
+<div class="bar" id="glossary-bar" hidden>
+  <input id="gq" placeholder="Поиск: термин, перевод, пример…">
+  <select id="gcat"><option value="">Категория</option></select>
 </div>
 <main id="list"></main>
 </div>
@@ -87,7 +107,7 @@ function render() {
   const jobs = DATA.jobs.filter(j =>
     (!city || j.city === city) &&
     (!cat || j.category_tag === cat) &&
-    (!q || `${j.title_sr || ''} ${j.title_ru || ''} ${j.city || ''} ${j.company_short || ''} ${j.snippet || ''}`
+    (!q || `${j.title_sr || ''} ${j.title_ru || ''} ${j.city || ''} ${j.company_short || ''} ${j.snippet || ''} ${j.description || ''}`
       .toLowerCase().includes(q))
   );
   $('count').textContent = `${jobs.length} / ${DATA.jobs.length}`;
@@ -118,6 +138,45 @@ function init(data) {
   render();
 }
 
+let VIEW = 'jobs';
+let GLOSSARY = [];
+
+function renderGlossary() {
+  const q = $('gq').value.toLowerCase();
+  const cat = $('gcat').value;
+  const rows = GLOSSARY.filter(w =>
+    (!cat || w.category === cat) &&
+    (!q || `${w.term || ''} ${w.translation_ru || ''} ${w.definition || ''} ${w.example_sr || ''} ${w.category || ''}`
+      .toLowerCase().includes(q))
+  );
+  $('count').textContent = `${rows.length} / ${GLOSSARY.length}`;
+  $('list').innerHTML = rows.map(w => `
+    <div class="word">
+      <div class="top">
+        <span class="term">${esc(w.term)} <span class="tr">— ${esc(w.translation_ru || '')}</span></span>
+        ${w.level ? `<span class="chip">${esc(w.level)}</span>` : ''}
+      </div>
+      ${w.definition ? `<div class="def">${esc(w.definition)}</div>` : ''}
+      ${w.example_sr ? `<div class="ex">${esc(w.example_sr)}</div>` : ''}
+      <div class="meta">
+        <span>${esc(w.category || 'Общее')}</span>
+        ${w.part_of_speech ? `<span>${esc(w.part_of_speech)}</span>` : ''}
+        <span>${w.source === 'ai' ? 'из вакансий' : 'ручной'}</span>
+        ${w.jobs ? `<span>вакансий: ${w.jobs}</span>` : ''}
+      </div>
+    </div>`).join('') || '<div class="empty">Ничего не найдено</div>';
+}
+
+function setView(view) {
+  VIEW = view;
+  const isJobs = view === 'jobs';
+  $('jobs-bar').hidden = !isJobs;
+  $('glossary-bar').hidden = isJobs;
+  $('tab-jobs').classList.toggle('active', isJobs);
+  $('tab-glossary').classList.toggle('active', !isJobs);
+  if (isJobs) render(); else renderGlossary();
+}
+
 async function loadJobs() {
   try {
     const res = await fetch('/api/jobs');
@@ -130,10 +189,22 @@ async function loadJobs() {
   }
 }
 
-['q', 'city', 'cat'].forEach(id => $(id).addEventListener('input', render));
+async function loadGlossary() {
+  const res = await fetch('/api/glossary');
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  GLOSSARY = await res.json();
+  fillSelect($('gcat'), [...new Set(GLOSSARY.map(w => w.category).filter(Boolean))]);
+  renderGlossary();
+}
+
+['q', 'city', 'cat'].forEach(id => $(id).addEventListener('input', () => VIEW === 'jobs' && render()));
+['gq', 'gcat'].forEach(id => $(id).addEventListener('input', () => VIEW === 'glossary' && renderGlossary()));
+['tab-jobs', 'tab-glossary'].forEach(id =>
+  $(id).addEventListener('click', () => setView($(id).dataset.view)));
 loadJobs().catch(e => {
   $('list').innerHTML = `<div class="empty err">Ошибка загрузки: ${esc(e.message)}</div>`;
 });
+loadGlossary().catch(() => { /* словарь может быть ещё пуст */ });
 </script>
 </body>
 </html>

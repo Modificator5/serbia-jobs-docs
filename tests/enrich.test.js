@@ -14,12 +14,13 @@ const { selectPending, applyResults } = require("../tools/batch-enrich");
 
 const db = openDb();
 const insJob = db.prepare(
-  `INSERT INTO jobs (id, source, source_url, title_sr, title_ru, snippet, parsed_at)
-   VALUES (?, ?, ?, ?, ?, ?, ?)`
+  `INSERT INTO jobs (id, source, source_url, title_sr, title_ru, snippet, description, parsed_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 );
-insJob.run("1", "test", "https://example.com/1", "Konobar", null, "Potreban konobar", "2026-11-03T00:00:00Z");
-insJob.run("2", "test", "https://example.com/2", "Vozač", "Водитель", null, "2026-11-03T00:00:00Z");
-insJob.run("3", "test", "https://example.com/3", "Magacioner", null, null, "2026-11-03T00:00:00Z");
+insJob.run("1", "test", "https://example.com/1", "Konobar", null, "Potreban konobar",
+  "Potreban konobar za rad u restoranu. Konobar mora da zna srpski jezik.", "2026-11-03T00:00:00Z");
+insJob.run("2", "test", "https://example.com/2", "Vozač", "Водитель", null, null, "2026-11-03T00:00:00Z");
+insJob.run("3", "test", "https://example.com/3", "Magacioner", null, null, null, "2026-11-03T00:00:00Z");
 
 // Уже обогащённая строка не должна попадать в выборку.
 db.prepare("UPDATE jobs SET enriched_at = ? WHERE id = ?").run("2026-11-03T00:00:00Z", "3");
@@ -31,7 +32,13 @@ assert.deepEqual(pending.map((j) => j.id).sort(), ["1", "2"]);
 db.prepare("INSERT INTO professions (title_sr, title_ru) VALUES (?, ?)").run("Vozač", "Кешированный водитель");
 
 const results = [
-  { id: 1, title_ru: "Официант", terms: [{ term: "konobar", definition: "официант" }] },
+  {
+    id: 1, title_ru: "Официант",
+    terms: [{
+      term: "konobar", translation_ru: "официант", definition: "работник зала",
+      part_of_speech: "imenica", level: "A1", example_sr: "Konobar mora da zna srpski jezik.",
+    }],
+  },
   { id: "2", title_ru: "Водитель-модель", terms: [] },
   null,
   { id: 999, title_ru: "Лишний" },
@@ -52,10 +59,19 @@ assert.ok(db.prepare("SELECT enriched_at FROM jobs WHERE id = ?").get("1").enric
 assert.equal(selectPending(db, 10).length, 0);
 
 const link = db.prepare(
-  "SELECT jw.job_url, g.term FROM job_words jw JOIN glossary g ON g.id = jw.word_id"
+  `SELECT jw.job_url, jw.context_snippet, g.term, g.translation_ru, g.definition,
+          g.part_of_speech, g.level, g.example_sr, g.source
+   FROM job_words jw JOIN glossary g ON g.id = jw.word_id`
 ).get();
 assert.equal(link.job_url, "https://example.com/1");
 assert.equal(link.term, "konobar");
+assert.equal(link.translation_ru, "официант");
+assert.equal(link.definition, "работник зала");
+assert.equal(link.part_of_speech, "imenica");
+assert.equal(link.level, "A1");
+assert.equal(link.example_sr, "Konobar mora da zna srpski jezik.");
+assert.equal(link.source, "ai");
+assert.match(link.context_snippet, /Potreban konobar za rad u restoranu/);
 
 db.close();
 fs.rmSync(tmp, { force: true });

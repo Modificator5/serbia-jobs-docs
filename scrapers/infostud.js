@@ -3,8 +3,10 @@
 // Запуск: node scrapers/infostud.js [страниц=2]
 // Режим выживания: по умолчанию 2 свежие страницы; полный: укажи больше.
 
-const { openDb, categoryTag, parseDateDMY } = require("./db");
-const { saveJobs, report } = require("./common");
+const { openDb, categoryTag, parseDateDMY, cleanText } = require("./db");
+const {
+  fetchHtml, newJobsOnly, attachDescriptions, saveJobs, report,
+} = require("./common");
 
 const BASE = "https://poslovi.infostud.com";
 const LISTING = `${BASE}/oglasi-za-posao?page=`;
@@ -36,10 +38,26 @@ function mapJob(job) {
     salary_raw: job.salary?.trim() || null,
     requirements_short: requirementsShort(job),
     company_short: job.companyName || null,
+    snippet: cleanText(job.textAdSnippet),
     category_tag: categoryTag(job.primaryCategory?.name),
     posted_at: parseDateDMY(job.onlineViewDate),
     parsed_at: new Date().toISOString(),
   };
+}
+
+// Детальная страница отдаёт полный текст в props.pageProps.job.textAd.
+// textAdSnippet из листинга — только начало; для словаря нужен весь текст.
+function extractDescription(html) {
+  const data = extractNextData(html);
+  const job = data.props?.pageProps?.job;
+  if (!job) return null;
+  const text = cleanText(job.textAd);
+  if (text) return text;
+  const summary = job.jobSummary || {};
+  const parts = [summary.summary, summary.responsibilities, summary.requirements]
+    .map((part) => cleanText(part))
+    .filter(Boolean);
+  return parts.length ? parts.join(" ") : null;
 }
 
 async function fetchPage(page) {
@@ -65,7 +83,15 @@ async function main() {
   for (let page = 1; page <= PAGES; page++) {
     const { jobs, total } = await fetchPage(page);
     if (page === 1) console.log(`Total listings: ${total}`);
-    const pageStats = saveJobs(db, jobs.map(mapJob));
+    const mapped = jobs.map(mapJob);
+    const fresh = newJobsOnly(db, mapped);
+    const desc = await attachDescriptions(
+      fresh,
+      (job) => extractDescription(fetchHtml(job.source_url)),
+      { limit: 40 }
+    );
+    if (desc.filled) console.log(`descriptions: ${desc.filled}/${desc.attempted}`);
+    const pageStats = saveJobs(db, mapped);
     stats.saved += pageStats.saved;
     stats.skipped += pageStats.skipped;
     stats.failed += pageStats.failed;
@@ -84,4 +110,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { extractNextData, requirementsShort, mapJob };
+module.exports = { extractNextData, requirementsShort, mapJob, extractDescription };

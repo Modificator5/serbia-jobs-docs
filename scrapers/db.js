@@ -128,7 +128,7 @@ function openReadOnlyDb() {
   return db;
 }
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function ensureColumn(db, table, column, ddl) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
@@ -139,9 +139,20 @@ function migrate(db) {
   // Идемпотентно: старые БД без user_version и новые проходят одни и те же шаги.
   ensureColumn(db, "jobs", "snippet", "snippet TEXT");
   ensureColumn(db, "jobs", "enriched_at", "enriched_at TEXT");
+  ensureColumn(db, "jobs", "description", "description TEXT");
+  ensureColumn(db, "jobs", "published_at", "published_at TEXT");
+  ensureColumn(db, "jobs", "telegram_message_id", "telegram_message_id INTEGER");
+  ensureColumn(db, "glossary", "translation_ru", "translation_ru TEXT");
+  ensureColumn(db, "glossary", "source", "source TEXT DEFAULT 'manual'");
+  ensureColumn(db, "glossary", "part_of_speech", "part_of_speech TEXT");
+  ensureColumn(db, "glossary", "level", "level TEXT");
+  ensureColumn(db, "glossary", "example_sr", "example_sr TEXT");
   db.exec("CREATE INDEX IF NOT EXISTS idx_jobs_parsed_at ON jobs(parsed_at)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_glossary_term_nocase ON glossary(term COLLATE NOCASE)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_glossary_source ON glossary(source)");
+  // Старые публикации не знали published_at; для истории достаточно parsed_at.
+  db.exec("UPDATE jobs SET published_at = parsed_at WHERE is_published = 1 AND published_at IS NULL");
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -275,6 +286,7 @@ function upsertJob(db, job) {
     requirements_short: cleanText(job.requirements_short),
     company_short: cleanText(job.company_short),
     snippet: cleanText(job.snippet),
+    description: cleanText(job.description),
     category_tag: job.category_tag || null,
     posted_at: normalizePostedAt(job.posted_at),
   };
@@ -292,15 +304,17 @@ function upsertJob(db, job) {
     db.prepare(
       `INSERT INTO jobs
         (id, source, source_url, title_sr, title_ru, city, salary_raw, salary_min, salary_max,
-         requirements_short, company_short, snippet, category_tag, posted_at, parsed_at, is_published)
+         requirements_short, company_short, snippet, description, category_tag, posted_at,
+         parsed_at, is_published)
        VALUES (?, ?, ?, ?,
          (SELECT title_ru FROM professions WHERE title_sr = ?),
-         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
+         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
     ).run(
       normalized.id, normalized.source, normalized.source_url, normalized.title_sr,
       normalized.title_sr, normalized.city, normalized.salary_raw, salary_min, salary_max,
       normalized.requirements_short, normalized.company_short, normalized.snippet,
-      normalized.category_tag, normalized.posted_at, normalized.parsed_at
+      normalized.description, normalized.category_tag, normalized.posted_at,
+      normalized.parsed_at
     );
     return true;
   }
@@ -320,14 +334,16 @@ function upsertJob(db, job) {
          ELSE (SELECT title_ru FROM professions WHERE title_sr = ?)
        END,
        city = ?, salary_raw = ?, salary_min = ?, salary_max = ?,
-       requirements_short = ?, company_short = ?, snippet = ?,
+       requirements_short = ?, company_short = ?,
+       snippet = COALESCE(?, snippet), description = COALESCE(?, description),
        category_tag = ?, posted_at = ?, parsed_at = ?
      WHERE id = ?`
   ).run(
     normalized.source, targetUrl, normalized.title_sr,
     normalized.title_sr, normalized.title_sr,
     normalized.city, normalized.salary_raw, salary_min, salary_max,
-    normalized.requirements_short, normalized.company_short, normalized.snippet,
+    normalized.requirements_short, normalized.company_short,
+    normalized.snippet, normalized.description,
     normalized.category_tag, normalized.posted_at, normalized.parsed_at,
     existing.id
   );

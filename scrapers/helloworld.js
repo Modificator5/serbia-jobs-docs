@@ -6,13 +6,28 @@
 // (только на странице вакансии — экономим, не заходим).
 // Запуск: node scrapers/helloworld.js [страниц=3]
 
-const { openDb, categoryTag } = require("./db");
-const { fetchHtml, saveJobs, report } = require("./common");
+const { openDb, categoryTag, cleanText } = require("./db");
+const {
+  fetchHtml, extractGenericDescription, newJobsOnly, attachDescriptions, saveJobs, report,
+} = require("./common");
 
 const BASE = "https://www.helloworld.rs";
 const LISTING = `${BASE}/oglasi-za-posao/stranica/`;
 const HEADERS = { accept: "text/html,application/xhtml+xml" };
 const PAGES = parseInt(process.argv[2] || "3", 10);
+
+// Описание вакансии лежит в блоке mtc-description до следующей вкладки.
+// JSON-LD на HelloWorld короткий (одно предложение), поэтому он только запасной.
+function extractDescription(html) {
+  const start = html.indexOf("mtc-description");
+  if (start !== -1) {
+    const nextTab = html.indexOf("data-tab=", start);
+    const chunk = html.slice(start, nextTab === -1 ? start + 40000 : nextTab);
+    const text = cleanText(chunk);
+    if (text && text.length >= 40) return text;
+  }
+  return extractGenericDescription(html);
+}
 
 function parsePage(html) {
   const jobs = [];
@@ -70,6 +85,12 @@ async function main() {
       console.log(`page ${page}: пусто (bytes=${html.length}) — стоп`);
       break;
     }
+    const desc = await attachDescriptions(
+      newJobsOnly(db, jobs),
+      (job) => extractDescription(fetchHtml(job.source_url, HEADERS)),
+      { limit: 40 }
+    );
+    if (desc.filled) console.log(`descriptions: ${desc.filled}/${desc.attempted}`);
     const pageStats = saveJobs(db, jobs);
     stats.saved += pageStats.saved;
     stats.skipped += pageStats.skipped;
@@ -89,4 +110,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parsePage };
+module.exports = { parsePage, extractDescription };

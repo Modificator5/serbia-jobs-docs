@@ -14,9 +14,26 @@ function getJobs() {
     return db.prepare(
       `SELECT id, source, source_url, title_sr, title_ru, city, salary_raw,
               salary_min, salary_max, requirements_short, company_short,
-              snippet, category_tag, posted_at, is_published
+              snippet, description, category_tag, posted_at, is_published
        FROM jobs
        ORDER BY posted_at DESC NULLS LAST, parsed_at DESC`
+    ).all();
+  } finally {
+    db.close();
+  }
+}
+
+function getGlossary() {
+  if (!fs.existsSync(DB_PATH)) return [];
+  const db = new DatabaseSync(DB_PATH, { readOnly: true });
+  try {
+    return db.prepare(
+      `SELECT g.id, g.term, g.translation_ru, g.definition, g.part_of_speech,
+              g.level, g.example_sr, g.source, COALESCE(c.name, 'Общее') AS category,
+              (SELECT COUNT(DISTINCT jw.job_url) FROM job_words jw WHERE jw.word_id = g.id) AS jobs
+       FROM glossary g
+       LEFT JOIN glossary_categories c ON c.id = g.category_id
+       ORDER BY category COLLATE NOCASE, g.term COLLATE NOCASE`
     ).all();
   } finally {
     db.close();
@@ -29,6 +46,16 @@ const server = http.createServer((req, res) => {
     try {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(getJobs()));
+    } catch (e) {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+  if (url.pathname === "/api/glossary") {
+    try {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(getGlossary()));
     } catch (e) {
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: e.message }));

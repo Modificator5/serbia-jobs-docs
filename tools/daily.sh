@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Полный дневной цикл: резервная копия -> глоссарий -> скрейп -> перевод -> обогащение
-# -> очистка -> экспорт -> проверка. Логи: logs/daily-YYYY-MM-DD.log (в git не входят).
+# Полный дневной цикл: резервная копия -> глоссарий -> скрейп -> полные тексты
+# -> перевод -> обогащение -> очистка -> экспорт -> журнал -> проверка.
+# Логи: logs/daily-YYYY-MM-DD.log (в git не входят).
 # Скрипт завершается с кодом 1, если хоть один шаг упал (для cron/monitoring).
 # Очистка (cleanup) — единственный разрушающий шаг: она выполняется только если
 # резервная копия и все парсеры отработали без ошибок.
@@ -55,6 +56,10 @@ sleep 5
 run scrape:hw   node scrapers/helloworld.js 3
 run source-counts node tools/source-stats.js
 
+# Полные тексты нужны словарю: парсеры сохраняют их для новых вакансий,
+# здесь постепенно добираем старые (по 40 за прогон, чтобы не злить площадки).
+run descriptions node tools/fetch-descriptions.js 40
+
 # Фиксируем, всё ли в порядке к этому моменту (копия + парсеры), до разрушающего шага.
 SAFE_TO_CLEAN=$FAILED
 
@@ -67,6 +72,8 @@ else
 fi
 run export:csv  node tools/export-csv.js
 run export:json node tools/export-json.js
+run export:gloss node tools/export-glossary.js
+run journal     node tools/journal.js ingest
 run check       node tools/check.js
 
 echo "== daily done $(date '+%F %T') failed=$FAILED =="
