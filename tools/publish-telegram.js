@@ -31,9 +31,10 @@ const DB_PATH = process.env.JOBS_DB || path.join(ROOT, "data", "jobs.db");
 
 function parseArgs(argv) {
   const dry = argv.includes("--dry");
-  const limit = argv.map((a) => (/^\d+$/.test(a) ? parseInt(a, 10) : null))
-    .find((n) => n !== null) || 5;
-  return { dry, limit: Math.max(1, limit) };
+  const all = argv.includes("--all");
+  const limitArg = argv.map((a) => (/^\d+$/.test(a) ? parseInt(a, 10) : null)).find((n) => n !== null);
+  const limit = Math.max(1, limitArg || 5);
+  return { dry, all, limit };
 }
 
 function formatDate(iso) {
@@ -154,7 +155,7 @@ function logPublish(line) {
 }
 
 async function main() {
-  const { dry, limit: LIMIT } = parseArgs(process.argv.slice(2));
+  const { dry, all, limit: LIMIT } = parseArgs(process.argv.slice(2));
   const TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
   const CHANNEL = process.env.TELEGRAM_CHANNEL_ID || "";
   if (!fs.existsSync(DB_PATH)) {
@@ -172,8 +173,7 @@ async function main() {
   const OTHER_KEY = `TRIM(LOWER(COALESCE(d.title_sr,''))) || '|' ||
     TRIM(LOWER(COALESCE(d.city,''))) || '|' ||
     TRIM(LOWER(COALESCE(d.company_short,'')))`;
-  const jobs = db.prepare(
-    `SELECT id, source_url, title_sr, title_ru, city, salary_raw, snippet,
+  const jobsQuery = `SELECT id, source_url, title_sr, title_ru, city, salary_raw, snippet,
             category_tag, posted_at
      FROM jobs
      WHERE is_published = 0
@@ -186,9 +186,10 @@ async function main() {
            AND ${OTHER_KEY} = ${DEDUPE_KEY}
            AND (d.is_published = 1 OR d.id < jobs.id)
        )
-     ORDER BY COALESCE(posted_at, substr(parsed_at, 1, 10)) DESC, id
-     LIMIT ?`
-  ).all(LIMIT);
+     ORDER BY COALESCE(posted_at, substr(parsed_at, 1, 10)) DESC, id`;
+  const jobs = all
+    ? db.prepare(jobsQuery).all()
+    : db.prepare(`${jobsQuery} LIMIT ?`).all(LIMIT);
 
   if (!jobs.length) {
     console.log("Нет новых вакансий для публикации.");

@@ -44,9 +44,9 @@ assert.doesNotMatch(withContacts, /060 123 4567|a@b\.rs/);
 
 assert.equal(formatDate("2026-01-05"), "05.01.2026");
 assert.equal(formatDate(null), null);
-assert.deepEqual(parseArgs(["--dry", "3"]), { dry: true, limit: 3 });
-assert.deepEqual(parseArgs(["7"]), { dry: false, limit: 7 });
-assert.deepEqual(parseArgs(["--dry"]), { dry: true, limit: 5 });
+assert.deepEqual(parseArgs(["--dry", "3"]), { dry: true, all: false, limit: 3 });
+assert.deepEqual(parseArgs(["7"]), { dry: false, all: false, limit: 7 });
+assert.deepEqual(parseArgs(["--dry"]), { dry: true, all: false, limit: 5 });
 
 // Публикуются только карточки с непустым title_ru.
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "serbia-publish-"));
@@ -76,4 +76,31 @@ try {
   fs.rmSync(TMP, { recursive: true, force: true });
 }
 
-console.log("OK: публикатор (карточка, обрезка, контакты, title_ru, аргументы).");
+// --all: публикует ВСЕ eligible непубликованные, без лимита по умолчанию.
+const TMP2 = fs.mkdtempSync(path.join(os.tmpdir(), "serbia-publish-all-"));
+try {
+  const db2 = new DatabaseSync(path.join(TMP2, "jobs.db"));
+  db2.exec(`CREATE TABLE jobs (id TEXT, source_url TEXT, title_sr TEXT, title_ru TEXT,
+    city TEXT, salary_raw TEXT, snippet TEXT, category_tag TEXT, posted_at TEXT,
+    parsed_at TEXT, company_short TEXT, is_published INTEGER DEFAULT 0)`);
+  for (let i = 1; i <= 7; i++) {
+    db2.prepare("INSERT INTO jobs (id, source_url, title_sr, title_ru, is_published) VALUES (?,?,?,?,0)")
+      .run(`t${i}`, `u-t${i}`, `Программист ${i}`, `Программист ${i}`);
+  }
+  db2.close();
+  const allOut = execFileSync("node", [path.join(__dirname, "..", "tools", "publish-telegram.js"), "--dry", "--all"], {
+    encoding: "utf8",
+    env: { ...process.env, JOBS_DB: path.join(TMP2, "jobs.db") },
+  });
+  assert.match(allOut, /DRY-RUN: 7/);
+  for (let i = 1; i <= 7; i++) assert.ok(allOut.includes(`u-t${i}`), `expected u-t${i}`);
+  const defOut = execFileSync("node", [path.join(__dirname, "..", "tools", "publish-telegram.js"), "--dry"], {
+    encoding: "utf8",
+    env: { ...process.env, JOBS_DB: path.join(TMP2, "jobs.db") },
+  });
+  assert.match(defOut, /DRY-RUN: 5/);
+} finally {
+  fs.rmSync(TMP2, { recursive: true, force: true });
+}
+
+console.log("OK: публикатор (карточка, обрезка, контакты, title_ru, аргументы, --all).");
