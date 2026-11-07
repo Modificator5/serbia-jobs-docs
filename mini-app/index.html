@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Карточки сербского</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg:#0e1621; --card:#17212b; --line:#101921; --txt:#f5f5f5;
+    --muted:#8b98a5; --acc:#6ab2f2; --green:#4fae6e; --chip:#2b5278;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font:16px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:14px 14px 40px; }
+  header { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  h1 { font-size:17px; margin:0; font-weight:600; }
+  .count { color:var(--muted); font-size:13px; white-space:nowrap; }
+  .bar { display:flex; gap:8px; margin:12px 0 16px; }
+  select, button { font:inherit; }
+  select { flex:1; background:var(--card); border:1px solid var(--line); color:var(--txt);
+           padding:9px 10px; border-radius:10px; min-width:0; }
+  .btn { background:var(--chip); border:1px solid var(--chip); color:#9ecbff; padding:9px 14px;
+         border-radius:10px; font-size:14px; cursor:pointer; }
+  .card { background:var(--card); border-radius:16px; padding:34px 20px; text-align:center;
+          box-shadow:0 2px 10px rgba(0,0,0,.35); cursor:pointer; min-height:250px;
+          display:flex; flex-direction:column; justify-content:center; gap:13px; }
+  .card .term { font-size:28px; font-weight:700; line-height:1.25; }
+  .card .answer { font-size:19px; color:var(--green); }
+  .card .def { font-size:15px; color:#c9d1d9; line-height:1.5; }
+  .card .ex { font-size:14px; color:var(--muted); font-style:italic; }
+  .card .hint { font-size:13px; color:#5c6b7a; }
+  .actions { display:flex; gap:10px; margin-top:16px; }
+  .actions button { flex:1; }
+  .actions .again { background:transparent; border-color:#5c6b7a; color:#c9d1d9; }
+  .empty { text-align:center; color:var(--muted); padding:40px 10px; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Карточки сербского</h1>
+    <span class="count" id="progress"></span>
+  </header>
+  <div class="bar">
+    <select id="cat"><option value="">Все категории</option></select>
+    <button class="btn" id="reset">Сброс</button>
+  </div>
+  <main id="list"><div class="empty">Загрузка…</div></main>
+</div>
+<script>
+const TG = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+const KEY = 'serbia-cards-progress-v1';
+const $ = (id) => document.getElementById(id);
+
+function initTelegram() {
+  if (!TG) return;
+  try {
+    TG.ready(); TG.expand();
+    if (TG.setHeaderColor) TG.setHeaderColor('secondary_bg_color');
+    if (TG.setBackgroundColor) TG.setBackgroundColor('bg_color');
+    if (TG.disableVerticalSwipes) TG.disableVerticalSwipes();
+    const p = TG.themeParams || {};
+    const map = { '--bg': p.bg_color, '--card': p.secondary_bg_color, '--txt': p.text_color,
+                  '--muted': p.hint_color, '--acc': p.link_color, '--chip': p.button_color };
+    for (const [k, v] of Object.entries(map)) if (v) document.documentElement.style.setProperty(k, v);
+  } catch {}
+}
+function haptic(type) {
+  try { if (TG && TG.HapticFeedback) TG.HapticFeedback.impactOccurred(type || 'light'); } catch {}
+}
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+let DECK = [];
+let ALL = [];
+let INDEX = 0;
+let REVEALED = false;
+let PROGRESS = {};
+try { PROGRESS = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { PROGRESS = {}; }
+
+function saveProgress() {
+  const payload = JSON.stringify(PROGRESS);
+  try { localStorage.setItem(KEY, payload); } catch {}
+  try { if (TG && TG.CloudStorage) TG.CloudStorage.setItem(KEY, payload, () => {}); } catch {}
+}
+function hydrateProgress() {
+  if (!TG || !TG.CloudStorage) return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      TG.CloudStorage.getItem(KEY, (err, value) => {
+        if (!err && value) { try { PROGRESS = JSON.parse(value) || PROGRESS; } catch {} }
+        resolve();
+      });
+    } catch { resolve(); }
+  });
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function cardsForCategory() {
+  const cat = $('cat').value;
+  return ALL.filter(w => (w.translation_ru || w.definition) && (!cat || w.category === cat));
+}
+function restart() {
+  DECK = shuffle(cardsForCategory());
+  INDEX = 0; REVEALED = false;
+  render();
+}
+function render() {
+  const known = DECK.filter(w => PROGRESS[String(w.id)]?.known).length;
+  $('progress').textContent = `${known} / ${DECK.length}`;
+  if (!DECK.length) {
+    $('list').innerHTML = '<div class="empty">Нет карточек.</div>';
+    return;
+  }
+  if (INDEX >= DECK.length) {
+    $('list').innerHTML = `<div class="empty">Колода пройдена: ${known} / ${DECK.length}.<br><br>
+      <button class="btn" id="again-deck">Ещё круг</button></div>`;
+    $('again-deck').onclick = () => { INDEX = 0; REVEALED = false; render(); };
+    return;
+  }
+  const w = DECK[INDEX];
+  const answer = w.translation_ru || '';
+  const definition = w.definition && w.definition !== answer ? w.definition : '';
+  $('list').innerHTML = `
+    <div class="card" id="card">
+      <div class="term">${esc(w.term)}</div>
+      ${REVEALED ? `
+        ${answer ? `<div class="answer">${esc(answer)}</div>` : ''}
+        ${definition ? `<div class="def">${esc(definition)}</div>` : ''}
+        ${w.example_sr ? `<div class="ex">${esc(w.example_sr)}</div>` : ''}
+      ` : '<div class="hint">Нажмите, чтобы показать перевод</div>'}
+      ${PROGRESS[String(w.id)]?.known ? '<div class="hint">уже отмечено как «знаю»</div>' : ''}
+    </div>
+    <div class="actions">
+      <button class="btn again" id="btn-again">Повторить</button>
+      <button class="btn" id="btn-known">Знаю</button>
+    </div>`;
+  $('card').onclick = () => { REVEALED = !REVEALED; render(); };
+  $('btn-again').onclick = (e) => {
+    e.stopPropagation(); haptic('soft');
+    delete PROGRESS[String(w.id)]; saveProgress();
+    INDEX++; REVEALED = false; render();
+  };
+  $('btn-known').onclick = (e) => {
+    e.stopPropagation(); haptic('light');
+    PROGRESS[String(w.id)] = { known: true, at: Date.now() }; saveProgress();
+    INDEX++; REVEALED = false; render();
+  };
+}
+
+async function load() {
+  const res = await fetch('glossary.json', { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  ALL = await res.json();
+  const cats = [...new Set(ALL.map(w => w.category).filter(Boolean))].sort((a,b) => a.localeCompare(b,'ru'));
+  for (const c of cats) {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c; $('cat').appendChild(o);
+  }
+  restart();
+}
+
+$('cat').addEventListener('change', restart);
+$('reset').addEventListener('click', () => { PROGRESS = {}; saveProgress(); restart(); });
+
+initTelegram();
+hydrateProgress().then(load).catch((e) => {
+  $('list').innerHTML = `<div class="empty">Ошибка загрузки: ${esc(e.message)}</div>`;
+});
+</script>
+</body>
+</html>
