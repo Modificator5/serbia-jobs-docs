@@ -3,180 +3,289 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Карточки сербского</title>
+<title>Сербский по вакансиям</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  :root {
-    --bg:#0e1621; --card:#17212b; --line:#101921; --txt:#f5f5f5;
-    --muted:#8b98a5; --acc:#6ab2f2; --green:#4fae6e; --chip:#2b5278;
-  }
+  :root { --bg:#0e1621; --card:#17212b; --txt:#f2f4f6; --muted:#8b98a5; --acc:#6ab2f2;
+          --ok:#5fbf84; --warn:#e0a458; --line:#243140; --btn:#2b5278; --danger:#e58a8a; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt);
-         font:16px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif; }
-  .wrap { max-width:560px; margin:0 auto; padding:14px 14px 40px; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif;
+         padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  .wrap { max-width:560px; margin:0 auto; padding:14px 14px 32px; }
   header { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
   h1 { font-size:17px; margin:0; font-weight:600; }
   .count { color:var(--muted); font-size:13px; white-space:nowrap; }
-  .bar { display:flex; gap:8px; margin:12px 0 16px; }
-  select, button { font:inherit; }
-  select { flex:1; background:var(--card); border:1px solid var(--line); color:var(--txt);
-           padding:9px 10px; border-radius:10px; min-width:0; }
-  .btn { background:var(--chip); border:1px solid var(--chip); color:#9ecbff; padding:9px 14px;
-         border-radius:10px; font-size:14px; cursor:pointer; }
-  .card { background:var(--card); border-radius:16px; padding:34px 20px; text-align:center;
-          box-shadow:0 2px 10px rgba(0,0,0,.35); cursor:pointer; min-height:250px;
-          display:flex; flex-direction:column; justify-content:center; gap:13px; }
-  .card .term { font-size:28px; font-weight:700; line-height:1.25; }
-  .card .answer { font-size:19px; color:var(--green); }
-  .card .def { font-size:15px; color:#c9d1d9; line-height:1.5; }
-  .card .ex { font-size:14px; color:var(--muted); font-style:italic; }
-  .card .hint { font-size:13px; color:#5c6b7a; }
-  .actions { display:flex; gap:10px; margin-top:16px; }
-  .actions button { flex:1; }
-  .actions .again { background:transparent; border-color:#5c6b7a; color:#c9d1d9; }
-  .empty { text-align:center; color:var(--muted); padding:40px 10px; }
+  .bar { display:flex; gap:8px; margin:12px 0; }
+  select, button { font:inherit; color:inherit; }
+  select { flex:1; min-width:0; background:var(--card); border:1px solid var(--line); padding:9px 10px; border-radius:10px; }
+  .meter { height:4px; background:var(--line); border-radius:2px; overflow:hidden; margin-bottom:14px; }
+  .meter i { display:block; height:100%; background:var(--ok); width:0; transition:width .25s; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:30px 20px 26px; min-height:290px;
+          display:flex; flex-direction:column; justify-content:center; gap:12px; text-align:center; cursor:pointer; user-select:none; }
+  .tag { font-size:12px; color:var(--muted); }
+  .tag b { color:var(--warn); font-weight:600; }
+  .term { font:700 30px/1.2 ui-serif,Georgia,'Times New Roman',serif; overflow-wrap:anywhere; }
+  .term.long { font-size:22px; }
+  .ans { font-size:20px; color:var(--ok); }
+  .note { font-size:15px; color:var(--txt); opacity:.85; }
+  .ex { font-size:14px; color:var(--muted); font-style:italic; }
+  .ex mark { background:none; color:var(--acc); font-style:normal; font-weight:600; }
+  .hint { font-size:13px; color:var(--muted); }
+  .freq { font-size:12px; color:var(--muted); }
+  .row { display:flex; gap:8px; margin-top:14px; }
+  .row button { flex:1; padding:13px 8px; border-radius:12px; border:1px solid var(--line); background:var(--card); font-size:15px; cursor:pointer; }
+  .row button:focus-visible, select:focus-visible, .card:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+  .b0 { color:var(--danger); } .b1 { color:var(--txt); } .b2 { background:var(--btn)!important; border-color:var(--btn)!important; }
+  .done { text-align:center; padding:34px 8px; }
+  .done h2 { margin:0 0 6px; font-size:20px; }
+  .done p { margin:4px 0; color:var(--muted); }
+  .link { background:none; border:0; color:var(--acc); padding:6px; font-size:14px; cursor:pointer; }
+  .foot { text-align:center; margin-top:18px; }
   [hidden] { display:none !important; }
+  @media (prefers-reduced-motion: reduce) { .meter i { transition:none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>Карточки сербского</h1>
-    <span class="count" id="progress"></span>
-  </header>
+  <header><h1>Сербский по вакансиям</h1><span class="count" id="stat"></span></header>
   <div class="bar">
-    <select id="cat"><option value="">Все категории</option></select>
-    <button class="btn" id="reset">Сброс</button>
+    <select id="cat" aria-label="Тип карточек"><option value="">Все типы</option></select>
+    <select id="topic" aria-label="Сфера"><option value="">Все сферы</option></select>
   </div>
-  <main id="list"><div class="empty">Загрузка…</div></main>
+  <div class="meter"><i id="meter"></i></div>
+  <main id="main"><div class="done"><p>Загрузка…</p></div></main>
+  <div class="foot"><button class="link" id="reset">Сбросить прогресс</button></div>
 </div>
 <script>
 const TG = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-const KEY = 'serbia-cards-progress-v1';
 const $ = (id) => document.getElementById(id);
+const SHARDS = 16, STORE = 'sc2_', NEW_PER_DAY = 5, REVIEW_CAP = 20, STEPS = [0, 1, 3, 7, 21, 60];
+const LEGACY_KEY = 'serbia-cards-progress-v1';
+const CAT_ORDER = ['Общение', 'Условия работы', 'Профессии и инструменты', 'Слова из вакансий', 'Глаголы'];
+const TOPICS = { ugostiteljstvo:'Гастрономия', turizam:'Туризм', trgovina:'Торговля', it:'IT', gradjevina:'Стройка',
+  proizvodnja:'Производство', zanat:'Ремесло', medicina:'Медицина', administracija:'Офис', prevoz:'Транспорт',
+  dostava:'Доставка', poljoprivreda:'Сельское хозяйство', obrazovanje:'Образование', finansije:'Финансы',
+  marketing:'Маркетинг', higijena:'Уборка', bezbednost:'Охрана', fizicki:'Физический труд', njega:'Уход' };
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const slug = (t) => String(t || '').toLowerCase().replace(/[čć]/g,'c').replace(/š/g,'s').replace(/ž/g,'z').replace(/đ/g,'dj').replace(/\s+/g,' ').trim();
+const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
+const shardOf = (key) => { let h = 5381; for (const ch of key) h = ((h << 5) + h + ch.charCodeAt(0)) >>> 0; return h % SHARDS; };
+const haptic = (t) => { try { TG && TG.HapticFeedback && TG.HapticFeedback.impactOccurred(t); } catch {} };
+
+let ALL = [], P = {}, QUEUE = [], CUR = null, SHOWN = false, EXTRA = 0, DONE = 0, FAILS = {};
+const dirty = new Set();
+let flushTimer = null, legacyRaw = null;
+
+// Progress per card key: {b: box 0-5, d: due day, l: lapses, s: last seen ms, f: first day, p: {b, d} | null}
+const pack = (st) => [st.b, st.d, st.l, st.s, st.f, st.p ? st.p.b : null, st.p ? st.p.d : null];
+const unpack = (a) => ({ b: a[0], d: a[1], l: a[2], s: a[3], f: a[4], p: a[5] == null ? null : { b: a[5], d: a[6] } });
+
+function mergeShard(raw) {
+  let obj; try { obj = JSON.parse(raw || '{}'); } catch { return; }
+  for (const [key, arr] of Object.entries(obj)) {
+    const st = unpack(arr);
+    if (!P[key] || st.s > P[key].s) P[key] = st;
+  }
+}
+function loadLocal() {
+  for (let i = 0; i < SHARDS; i++) { try { mergeShard(localStorage.getItem(STORE + i)); } catch {} }
+  try { const l = localStorage.getItem(LEGACY_KEY); if (l && !legacyRaw) legacyRaw = l; } catch {}
+}
+function loadCloud() {
+  if (!TG || !TG.CloudStorage || !TG.CloudStorage.getItems) return Promise.resolve();
+  const keys = Array.from({ length: SHARDS }, (_, i) => STORE + i);
+  const shards = new Promise((resolve) => {
+    try { TG.CloudStorage.getItems(keys, (err, vals) => { if (!err && vals) keys.forEach((k) => mergeShard(vals[k])); resolve(); }); }
+    catch { resolve(); }
+  });
+  const legacy = new Promise((resolve) => {
+    if (typeof TG.CloudStorage.getItem !== 'function') return resolve();
+    try { TG.CloudStorage.getItem(LEGACY_KEY, (err, value) => { if (!err && value) legacyRaw = value; resolve(); }); }
+    catch { resolve(); }
+  });
+  return Promise.all([shards, legacy]).then(() => {});
+}
+// v1 kept one flat map {id: {known: true, at}} under LEGACY_KEY. Move it into the
+// sharded boxes once: "known" was the only state, so it becomes box 4 (learned).
+const dayOf = (ms) => Math.floor((ms - new Date(ms).getTimezoneOffset() * 60000) / 864e5);
+function migrateLegacy() {
+  if (Object.keys(P).length || !legacyRaw) return;
+  let old; try { old = JSON.parse(legacyRaw); } catch { return; }
+  if (!old || typeof old !== 'object') return;
+  const t = today();
+  let moved = 0;
+  for (const w of ALL) {
+    const rec = old[String(w.id)];
+    if (!rec || !rec.known) continue;
+    const at = Number(rec.at) || Date.now();
+    P[w.key] = { b: 4, d: t + 21, l: 0, s: at, f: dayOf(at), p: null };
+    moved++;
+  }
+  try { localStorage.removeItem(LEGACY_KEY); } catch {}
+  legacyRaw = null;
+  if (moved) { for (let i = 0; i < SHARDS; i++) dirty.add(i); flush(); }
+  console.log('progress: migrated from v1:', moved);
+}
+function save(key) { dirty.add(shardOf(key)); clearTimeout(flushTimer); flushTimer = setTimeout(flush, 400); }
+function flush() {
+  for (const i of dirty) {
+    const obj = {};
+    for (const [k, st] of Object.entries(P)) if (shardOf(k) === i) obj[k] = pack(st);
+    const json = JSON.stringify(obj);
+    try { localStorage.setItem(STORE + i, json); } catch {}
+    try { if (TG && TG.CloudStorage) TG.CloudStorage.setItem(STORE + i, json, (err) => { if (err) console.warn('cloud save', err); }); } catch {}
+  }
+  dirty.clear();
+}
+
+function filtered() {
+  const cat = $('cat').value, topic = $('topic').value;
+  return ALL.filter((w) => (!cat || w.category === cat) && (!topic || w.topic === topic));
+}
+function learned() { return ALL.filter((w) => (P[w.key]?.b || 0) >= 4).length; }
+
+function buildQueue() {
+  const t = today(), pool = filtered();
+  const due = [];
+  for (const w of pool) {
+    const st = P[w.key]; if (!st) continue;
+    if (st.b > 0 && st.d <= t) due.push({ w, dir: 'r', over: t - st.d, l: st.l });
+    if (st.p && st.p.d <= t) due.push({ w, dir: 'p', over: t - st.p.d, l: st.l });
+  }
+  due.sort((a, b) => b.over - a.over || b.l - a.l);
+  const reviews = due.slice(0, REVIEW_CAP);
+  const startedToday = ALL.filter((w) => P[w.key]?.f === t).length;
+  const room = Math.max(0, NEW_PER_DAY + EXTRA - startedToday);
+  const rank = (w) => { const i = CAT_ORDER.indexOf(w.category); return i < 0 ? 99 : i; };
+  const fresh = pool.filter((w) => !P[w.key]).sort((a, b) => rank(a) - rank(b) || (b.freq || 0) - (a.freq || 0) || a.term.localeCompare(b.term, 'sr'))
+    .slice(0, room).map((w) => ({ w, dir: 'r', over: 0, l: 0 }));
+  const q = [];
+  while (reviews.length || fresh.length) {
+    for (let i = 0; i < 3 && reviews.length; i++) q.push(reviews.shift());
+    if (fresh.length) q.push(fresh.shift());
+  }
+  QUEUE = q; DONE = 0; FAILS = {};
+}
+
+function grade(g) {
+  const { w, dir } = CUR, t = today();
+  const st = P[w.key] || (P[w.key] = { b: 0, d: 0, l: 0, s: 0, f: t, p: null });
+  const box = dir === 'p' ? st.p : st;
+  if (g === 0) {
+    box.b = 1; box.d = t + 1; if (!CUR.again) st.l++;
+    const n = (FAILS[w.key + dir] = (FAILS[w.key + dir] || 0) + 1);
+    if (n <= 2) QUEUE.splice(Math.min(4, QUEUE.length), 0, { w, dir, again: true });
+    haptic('soft');
+  } else {
+    if (!CUR.again) { box.b = Math.min(5, Math.max(1, box.b) + g); box.d = t + STEPS[box.b]; }
+    if (dir === 'r' && st.b >= 3 && !st.p) st.p = { b: 1, d: t + 1 };
+    haptic('light');
+  }
+  st.s = Date.now(); save(w.key);
+  if (!CUR.again) DONE++;
+  next();
+}
+function next() { CUR = QUEUE.shift() || null; SHOWN = false; render(); }
+
+function renderMeter() {
+  const n = ALL.length;
+  $('stat').textContent = `выучено ${learned()} из ${n}`;
+  $('meter').style.width = (n ? (learned() / n) * 100 : 0) + '%';
+}
+function hl(text, term) {
+  const stem = slug(term).split(' ')[0].slice(0, 5);
+  if (stem.length < 3) return esc(text);
+  const words = String(text).split(/(\s+)/);
+  return words.map((x) => (slug(x).includes(stem) ? `<mark>${esc(x)}</mark>` : esc(x))).join('');
+}
+function render() {
+  renderMeter();
+  const el = $('main');
+  if (!ALL.length) { el.innerHTML = '<div class="done"><p>Карточек пока нет.</p></div>'; return; }
+  if (!CUR) {
+    const t = today(), pool = filtered();
+    const later = pool.filter((w) => P[w.key] && P[w.key].b > 0 && P[w.key].d > t);
+    const tomorrow = later.filter((w) => P[w.key].d === t + 1).length;
+    const left = pool.filter((w) => !P[w.key]).length;
+    el.innerHTML = `<div class="done"><h2>${DONE ? 'Сессия завершена' : 'На сегодня всё'}</h2>
+      ${DONE ? `<p>Разобрано карточек: ${DONE}</p>` : ''}
+      <p>Завтра на повторение: ${tomorrow}</p>
+      ${left ? `<p>Новых слов в этой подборке: ${left}</p><button class="link" id="more">Ещё ${NEW_PER_DAY} новых слов</button>` : ''}</div>`;
+    const more = $('more'); if (more) more.onclick = () => { EXTRA += NEW_PER_DAY; buildQueue(); next(); };
+    return;
+  }
+  const { w, dir } = CUR, prod = dir === 'p', st = P[w.key];
+  const unit = w.unit_type === 'sentence' ? 'предложение' : w.unit_type === 'phrase' ? 'фраза' : '';
+  const front = prod ? w.translation_ru : w.term;
+  const tags = [prod ? 'скажи по-сербски' : (st ? 'повторение' : 'новое слово'), unit, w.category].filter(Boolean).join(' · ');
+  const hard = st && st.l >= 4 ? ' <b>трудное</b>' : '';
+  el.innerHTML = `<div class="card" id="card" tabindex="0" role="button">
+      <div class="tag">${esc(tags)}${hard}</div>
+      <div class="term${front.length > 30 ? ' long' : ''}" lang="${prod ? 'ru' : 'sr'}">${esc(front)}</div>
+      ${SHOWN ? `<div class="ans" lang="${prod ? 'sr' : 'ru'}">${esc(prod ? w.term : w.translation_ru)}</div>
+        ${w.definition ? `<div class="note">${esc(w.definition)}</div>` : ''}
+        ${w.example_sr ? `<div class="ex" lang="sr">${hl(w.example_sr, w.term)}</div>` : ''}
+        ${w.freq ? `<div class="freq">Встретилось в вакансиях: ${w.freq}</div>` : ''}`
+        : '<div class="hint">Нажмите, чтобы увидеть ответ</div>'}
+    </div>
+    ${SHOWN ? `<div class="row"><button class="b0" data-g="0">Не знаю</button><button class="b1" data-g="1">Знаю</button><button class="b2" data-g="2">Легко</button></div>` : ''}`;
+  const reveal = () => { SHOWN = true; render(); };
+  $('card').onclick = () => { if (!SHOWN) reveal(); };
+  $('card').onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !SHOWN) { e.preventDefault(); reveal(); } };
+  el.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => grade(Number(b.dataset.g)); });
+}
+
+function normalize(w) {
+  w.key = w.key || slug(w.term);
+  w.unit_type = w.unit_type || (/[.!?…]$/.test(w.term) ? 'sentence' : /\s/.test(w.term.trim()) ? 'phrase' : 'word');
+  w.category = w.category || 'Слова из вакансий';
+  w.definition = w.definition && w.definition !== w.translation_ru ? w.definition : '';
+  return w;
+}
+function fillSelect(id, values, label) {
+  const sel = $(id);
+  for (const v of values) { const o = document.createElement('option'); o.value = v; o.textContent = label ? label(v) : v; sel.appendChild(o); }
+}
+function restart() { buildQueue(); next(); }
+
+async function load() {
+  const res = await fetch('glossary.json', { cache: 'no-cache' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  ALL = (await res.json()).filter((w) => w && w.term && w.translation_ru).map(normalize);
+  const cats = [...new Set(ALL.map((w) => w.category))].sort((a, b) => (CAT_ORDER.indexOf(a) + 1 || 99) - (CAT_ORDER.indexOf(b) + 1 || 99));
+  fillSelect('cat', cats);
+  fillSelect('topic', [...new Set(ALL.map((w) => w.topic).filter(Boolean))].sort(), (v) => TOPICS[v] || v);
+  const start = TG && TG.initDataUnsafe && TG.initDataUnsafe.start_param;
+  if (start && [...$('topic').options].some((o) => o.value === start)) $('topic').value = start;
+  migrateLegacy();
+  restart();
+}
 
 function initTelegram() {
   if (!TG) return;
   try {
     TG.ready(); TG.expand();
-    if (TG.setHeaderColor) TG.setHeaderColor('secondary_bg_color');
-    if (TG.setBackgroundColor) TG.setBackgroundColor('bg_color');
     if (TG.disableVerticalSwipes) TG.disableVerticalSwipes();
     const p = TG.themeParams || {};
-    const map = { '--bg': p.bg_color, '--card': p.secondary_bg_color, '--txt': p.text_color,
-                  '--muted': p.hint_color, '--acc': p.link_color, '--chip': p.button_color };
+    const map = { '--bg': p.bg_color, '--card': p.secondary_bg_color, '--txt': p.text_color, '--muted': p.hint_color, '--acc': p.link_color, '--btn': p.button_color };
     for (const [k, v] of Object.entries(map)) if (v) document.documentElement.style.setProperty(k, v);
   } catch {}
 }
-function haptic(type) {
-  try { if (TG && TG.HapticFeedback) TG.HapticFeedback.impactOccurred(type || 'light'); } catch {}
-}
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-let DECK = [];
-let ALL = [];
-let INDEX = 0;
-let REVEALED = false;
-let PROGRESS = {};
-try { PROGRESS = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { PROGRESS = {}; }
-
-function saveProgress() {
-  const payload = JSON.stringify(PROGRESS);
-  try { localStorage.setItem(KEY, payload); } catch {}
-  try { if (TG && TG.CloudStorage) TG.CloudStorage.setItem(KEY, payload, () => {}); } catch {}
-}
-function hydrateProgress() {
-  if (!TG || !TG.CloudStorage) return Promise.resolve();
-  return new Promise((resolve) => {
-    try {
-      TG.CloudStorage.getItem(KEY, (err, value) => {
-        if (!err && value) { try { PROGRESS = JSON.parse(value) || PROGRESS; } catch {} }
-        resolve();
-      });
-    } catch { resolve(); }
-  });
-}
-function shuffle(a) {
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function cardsForCategory() {
-  const cat = $('cat').value;
-  return ALL.filter(w => (w.translation_ru || w.definition) && (!cat || w.category === cat));
-}
-function restart() {
-  DECK = shuffle(cardsForCategory());
-  INDEX = 0; REVEALED = false;
-  render();
-}
-function render() {
-  const known = DECK.filter(w => PROGRESS[String(w.id)]?.known).length;
-  $('progress').textContent = `${known} / ${DECK.length}`;
-  if (!DECK.length) {
-    $('list').innerHTML = '<div class="empty">Нет карточек.</div>';
-    return;
-  }
-  if (INDEX >= DECK.length) {
-    $('list').innerHTML = `<div class="empty">Колода пройдена: ${known} / ${DECK.length}.<br><br>
-      <button class="btn" id="again-deck">Ещё круг</button></div>`;
-    $('again-deck').onclick = () => { INDEX = 0; REVEALED = false; render(); };
-    return;
-  }
-  const w = DECK[INDEX];
-  const answer = w.translation_ru || '';
-  const definition = w.definition && w.definition !== answer ? w.definition : '';
-  $('list').innerHTML = `
-    <div class="card" id="card">
-      <div class="term">${esc(w.term)}</div>
-      ${REVEALED ? `
-        ${answer ? `<div class="answer">${esc(answer)}</div>` : ''}
-        ${definition ? `<div class="def">${esc(definition)}</div>` : ''}
-        ${w.example_sr ? `<div class="ex">${esc(w.example_sr)}</div>` : ''}
-      ` : '<div class="hint">Нажмите, чтобы показать перевод</div>'}
-      ${PROGRESS[String(w.id)]?.known ? '<div class="hint">уже отмечено как «знаю»</div>' : ''}
-    </div>
-    <div class="actions">
-      <button class="btn again" id="btn-again">Повторить</button>
-      <button class="btn" id="btn-known">Знаю</button>
-    </div>`;
-  $('card').onclick = () => { REVEALED = !REVEALED; render(); };
-  $('btn-again').onclick = (e) => {
-    e.stopPropagation(); haptic('soft');
-    delete PROGRESS[String(w.id)]; saveProgress();
-    INDEX++; REVEALED = false; render();
-  };
-  $('btn-known').onclick = (e) => {
-    e.stopPropagation(); haptic('light');
-    PROGRESS[String(w.id)] = { known: true, at: Date.now() }; saveProgress();
-    INDEX++; REVEALED = false; render();
-  };
-}
-
-async function load() {
-  const res = await fetch('glossary.json', { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  ALL = await res.json();
-  const cats = [...new Set(ALL.map(w => w.category).filter(Boolean))].sort((a,b) => a.localeCompare(b,'ru'));
-  for (const c of cats) {
-    const o = document.createElement('option');
-    o.value = c; o.textContent = c; $('cat').appendChild(o);
-  }
-  restart();
-}
 
 $('cat').addEventListener('change', restart);
-$('reset').addEventListener('click', () => { PROGRESS = {}; saveProgress(); restart(); });
+$('topic').addEventListener('change', restart);
+$('reset').addEventListener('click', () => {
+  const run = () => { P = {}; for (let i = 0; i < SHARDS; i++) dirty.add(i); flush(); EXTRA = 0; restart(); };
+  if (TG && TG.showConfirm) TG.showConfirm('Сбросить весь прогресс?', (ok) => ok && run());
+  else if (confirm('Сбросить весь прогресс?')) run();
+});
+window.addEventListener('pagehide', flush);
 
 initTelegram();
-hydrateProgress().then(load).catch((e) => {
-  $('list').innerHTML = `<div class="empty">Ошибка загрузки: ${esc(e.message)}</div>`;
-});
+loadLocal();
+loadCloud().then(load).catch((e) => { $('main').innerHTML = `<div class="done"><p>Не удалось загрузить колоду: ${esc(e.message)}. Откройте приложение ещё раз.</p></div>`; });
 </script>
 </body>
 </html>
