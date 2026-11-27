@@ -62,7 +62,7 @@ const TG = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : 
 const $ = (id) => document.getElementById(id);
 const SHARDS = 16, STORE = 'sc2_', NEW_PER_DAY = 5, REVIEW_CAP = 20, STEPS = [0, 1, 3, 7, 21, 60];
 const LEGACY_KEY = 'serbia-cards-progress-v1';
-const CAT_ORDER = ['Общение', 'Условия работы', 'Профессии и инструменты', 'Слова из вакансий', 'Глаголы'];
+const CAT_ORDER = ['Общение', 'Условия работы', 'Профессии и инструменты', 'Термины', 'Глаголы'];
 const TOPICS = { ugostiteljstvo:'Гастрономия', turizam:'Туризм', trgovina:'Торговля', it:'IT', gradjevina:'Стройка',
   proizvodnja:'Производство', zanat:'Ремесло', medicina:'Медицина', administracija:'Офис', prevoz:'Транспорт',
   dostava:'Доставка', poljoprivreda:'Сельское хозяйство', obrazovanje:'Образование', finansije:'Финансы',
@@ -227,7 +227,7 @@ function render() {
       ${SHOWN ? `<div class="ans" lang="${prod ? 'sr' : 'ru'}">${esc(prod ? w.term : w.translation_ru)}</div>
         ${w.definition ? `<div class="note">${esc(w.definition)}</div>` : ''}
         ${w.example_sr ? `<div class="ex" lang="sr">${hl(w.example_sr, w.term)}</div>` : ''}
-        ${w.freq ? `<div class="freq">Встретилось в вакансиях: ${w.freq}</div>` : ''}`
+        ${w.vacancy ? `<div class="vac">из вакансии: ${esc(w.vacancy)}</div>` : (w.freq ? `<div class="freq">встретилось в ${w.freq} вакансиях</div>` : '')}`
         : '<div class="hint">Нажмите, чтобы увидеть ответ</div>'}
     </div>
     ${SHOWN ? `<div class="row"><button class="b0" data-g="0">Не знаю</button><button class="b1" data-g="1">Знаю</button><button class="b2" data-g="2">Легко</button></div>` : ''}`;
@@ -240,7 +240,7 @@ function render() {
 function normalize(w) {
   w.key = w.key || slug(w.term);
   w.unit_type = w.unit_type || (/[.!?…]$/.test(w.term) ? 'sentence' : /\s/.test(w.term.trim()) ? 'phrase' : 'word');
-  w.category = w.category || 'Слова из вакансий';
+  w.category = w.category || 'Термины';
   w.definition = w.definition && w.definition !== w.translation_ru ? w.definition : '';
   return w;
 }
